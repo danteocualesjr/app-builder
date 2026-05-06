@@ -574,6 +574,84 @@ export function AppBuilder() {
     }))
   }
 
+  function deleteConversation(conversationId: string) {
+    const target = getConversationById(
+      conversationsRef.current,
+      conversationId
+    )
+    const sessionId = target?.session?.id
+
+    const controller = abortControllersRef.current.get(conversationId)
+    if (controller) {
+      controller.abort()
+      abortControllersRef.current.delete(conversationId)
+    }
+
+    if (sessionId) {
+      void fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+      }).catch(() => {
+        // Best-effort server-side cleanup; UI state is already removed.
+      })
+    }
+
+    restoredConversationIdsRef.current.delete(conversationId)
+    titleGenerationConversationIdsRef.current.delete(conversationId)
+
+    setTitleGenerationConversationIds((current) => {
+      if (!current.has(conversationId)) {
+        return current
+      }
+      const next = new Set(current)
+      next.delete(conversationId)
+      return next
+    })
+
+    setRuntimeByConversationId((current) => {
+      if (!(conversationId in current)) {
+        return current
+      }
+      const next = { ...current }
+      delete next[conversationId]
+      return next
+    })
+
+    let nextActiveId: string | null = null
+    setConversations((current) => {
+      const remaining = current.filter(
+        (conversation) => conversation.id !== conversationId
+      )
+
+      if (conversationId === activeConversationId) {
+        const sorted = [...remaining].sort(
+          (a, b) => b.updatedAt - a.updatedAt
+        )
+        if (sorted.length > 0) {
+          nextActiveId = sorted[0].id
+          return remaining
+        }
+
+        const replacement = createEmptyConversation(
+          getNextConversationTitle(remaining)
+        )
+        nextActiveId = replacement.id
+        return [replacement]
+      }
+
+      return remaining
+    })
+
+    if (nextActiveId) {
+      setActiveConversationId(nextActiveId)
+      setRuntimeByConversationId((current) => {
+        if (current[nextActiveId!]) {
+          return current
+        }
+        return { ...current, [nextActiveId!]: createRuntimeState() }
+      })
+    }
+  }
+
   function setApiKeySettingsOpen(open: boolean) {
     setIsApiKeySettingsOpen(open)
     setIsApiKeyClearConfirming(false)
@@ -1333,6 +1411,7 @@ export function AppBuilder() {
           onApiKeySettingsOpenChange={setApiKeySettingsOpen}
           onClearSavedApiKey={confirmClearSavedApiKey}
           onCreateConversation={createConversation}
+          onDeleteConversation={deleteConversation}
           onGenerateName={generateConversationTitle}
           onHideSidebar={() => {
             setIsProjectSidebarOpen(false)
@@ -2785,6 +2864,7 @@ function ConversationSidebar({
   onApiKeySettingsOpenChange,
   onClearSavedApiKey,
   onCreateConversation,
+  onDeleteConversation,
   onGenerateName,
   onHideSidebar,
   onRenameConversation,
@@ -2806,6 +2886,7 @@ function ConversationSidebar({
   onApiKeySettingsOpenChange: (open: boolean) => void
   onClearSavedApiKey: () => void
   onCreateConversation: () => void
+  onDeleteConversation: (conversationId: string) => void
   onGenerateName: (conversationId: string) => void
   onHideSidebar: () => void
   onRenameConversation: (conversationId: string, title: string) => void
@@ -2820,6 +2901,7 @@ function ConversationSidebar({
     conversationId: string
     title: string
   } | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const activeRenameConversationId = renameState?.conversationId
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -2854,12 +2936,14 @@ function ConversationSidebar({
 
       setContextMenu(null)
       setRenameState(null)
+      setDeleteConfirmId(null)
     }
 
     function handleKeyDown(event: WindowEventMap["keydown"]) {
       if (event.key === "Escape") {
         setContextMenu(null)
         setRenameState(null)
+        setDeleteConfirmId(null)
       }
     }
 
@@ -2890,7 +2974,7 @@ function ConversationSidebar({
 
     const margin = 8
     const menuWidth = 176
-    const menuHeight = 112
+    const menuHeight = 160
     setContextMenu({
       conversationId,
       x: Math.min(
@@ -2903,6 +2987,7 @@ function ConversationSidebar({
       ),
     })
     setRenameState(null)
+    setDeleteConfirmId(null)
   }
 
   function startRename() {
@@ -2971,6 +3056,7 @@ function ConversationSidebar({
                 aria-current={isActive ? "page" : undefined}
                 onClick={() => {
                   setContextMenu(null)
+                  setDeleteConfirmId(null)
                   onSelectConversation(conversation.id)
                 }}
                 onContextMenu={(event) =>
@@ -3078,6 +3164,51 @@ function ConversationSidebar({
                       ? "Generating name..."
                       : "Generate name"}
                   </button>
+                  {deleteConfirmId === contextMenu.conversationId ? (
+                    <div className="flex flex-col gap-1 px-1 py-1">
+                      <p className="px-1.5 text-xs text-muted-foreground">
+                        Delete this project? The local preview workspace will
+                        be removed.
+                      </p>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="h-8 flex-1 rounded-sm"
+                          onClick={() => {
+                            const conversationId = contextMenu.conversationId
+                            setContextMenu(null)
+                            setDeleteConfirmId(null)
+                            onDeleteConversation(conversationId)
+                          }}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 flex-1 rounded-sm"
+                          onClick={() => setDeleteConfirmId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-destructive outline-none hover:bg-destructive/10 focus-visible:bg-destructive/10"
+                      onClick={() =>
+                        setDeleteConfirmId(contextMenu.conversationId)
+                      }
+                    >
+                      <Trash2 aria-hidden="true" className="size-4" />
+                      Delete project
+                    </button>
+                  )}
                 </>
               )}
             </div>

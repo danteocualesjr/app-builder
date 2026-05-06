@@ -164,10 +164,13 @@ const fallbackModels: ModelCatalogItem[] = [
 
 const globalForSessions = globalThis as typeof globalThis & {
   __appBuilderSessions?: Map<string, BuilderSession>
+  __appBuilderShutdownRegistered?: boolean
 }
 
 const sessions = globalForSessions.__appBuilderSessions ?? new Map()
 globalForSessions.__appBuilderSessions = sessions
+
+registerShutdownHooks()
 
 export async function readPersistedCursorApiKey(): Promise<string | null> {
   const settings = await readPersistedSettings()
@@ -354,6 +357,152 @@ export async function cancelAgentRun(sessionId: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export async function deleteSession(sessionId: string): Promise<boolean> {
+  const session = sessions.get(sessionId)
+
+  if (!session) {
+    return false
+  }
+
+  sessions.delete(sessionId)
+
+  await cancelActiveRun(session)
+  closeAgent(session)
+  await stopDevProcess(session)
+  await removeSessionWorkspace(session)
+
+  return true
+}
+
+async function cancelActiveRun(session: BuilderSession) {
+  const run = session.activeRun
+  if (!run) {
+    return
+  }
+
+  session.activeRun = undefined
+  if (!run.supports("cancel")) {
+    return
+  }
+
+  try {
+    await run.cancel()
+  } catch {
+    // Best-effort; the agent close below will tear down the local executor regardless.
+  }
+}
+
+function closeAgent(session: BuilderSession) {
+  const agent = session.agent
+  if (!agent) {
+    return
+  }
+
+  session.agent = undefined
+  try {
+    agent.close()
+  } catch {
+    // Local executor may already be torn down; ignore.
+  }
+}
+
+async function stopDevProcess(session: BuilderSession): Promise<void> {
+  const child = session.devProcess
+  if (!child || child.killed || child.exitCode !== null) {
+    session.devProcess = undefined
+    return
+  }
+
+  return new Promise((resolve) => {
+    let resolved = false
+    const finish = () => {
+      if (resolved) {
+        return
+      }
+      resolved = true
+      session.devProcess = undefined
+      resolve()
+    }
+
+    const timeout = setTimeout(() => {
+      try {
+        child.kill("SIGKILL")
+      } catch {
+        // Already gone.
+      }
+      finish()
+    }, 2_000)
+
+    child.once("exit", () => {
+      clearTimeout(timeout)
+      finish()
+    })
+
+    try {
+      child.kill("SIGTERM")
+    } catch {
+      clearTimeout(timeout)
+      finish()
+    }
+  })
+}
+
+async function removeSessionWorkspace(session: BuilderSession) {
+  const sessionDir = path.dirname(session.projectPath)
+  const sessionsDir = path.resolve(workspaceRoot)
+  const resolved = path.resolve(sessionDir)
+
+  if (!resolved.startsWith(`${sessionsDir}${path.sep}`)) {
+    // Refuse to delete outside the managed sessions directory.
+    return
+  }
+
+  await fs.rm(resolved, { recursive: true, force: true }).catch(() => {
+    // Best-effort cleanup; orphaned files are tolerable.
+  })
+}
+
+export async function shutdownAllSessions() {
+  const allSessions = Array.from(sessions.values())
+  sessions.clear()
+
+  await Promise.all(
+    allSessions.map(async (session) => {
+      await cancelActiveRun(session)
+      closeAgent(session)
+      await stopDevProcess(session)
+    })
+  )
+}
+
+function registerShutdownHooks() {
+  if (globalForSessions.__appBuilderShutdownRegistered) {
+    return
+  }
+  globalForSessions.__appBuilderShutdownRegistered = true
+
+  let shuttingDown = false
+  const handleSignal = (signal: NodeJS.Signals) => {
+    if (shuttingDown) {
+      return
+    }
+    shuttingDown = true
+    void shutdownAllSessions().finally(() => {
+      process.kill(process.pid, signal)
+    })
+  }
+
+  process.once("SIGINT", handleSignal)
+  process.once("SIGTERM", handleSignal)
+  process.once("beforeExit", () => {
+    if (shuttingDown) {
+      return
+    }
+    shuttingDown = true
+    void shutdownAllSessions()
+  })
 }
 
 export async function generateProjectName(
