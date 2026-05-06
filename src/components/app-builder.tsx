@@ -28,6 +28,7 @@ import {
   SidebarSimpleIcon as PanelLeftOpen,
   SparkleIcon as Sparkles,
   SpinnerGapIcon as Loader2,
+  StopIcon as Stop,
   TerminalWindowIcon as Terminal,
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
@@ -248,6 +249,7 @@ export function AppBuilder() {
   const conversationsRef = useRef(conversations)
   const restoredConversationIdsRef = useRef(new Set<string>())
   const titleGenerationConversationIdsRef = useRef(new Set<string>())
+  const abortControllersRef = useRef(new Map<string, AbortController>())
   const lastStreamEventTypeRef = useRef<
     Record<string, StreamPayload["type"] | null>
   >({})
@@ -940,6 +942,8 @@ export function AppBuilder() {
     const userText = input.trim()
     const assistantId = crypto.randomUUID()
     lastStreamEventTypeRef.current[conversationId] = null
+    const controller = new AbortController()
+    abortControllersRef.current.set(conversationId, controller)
     setConversationRuntime(conversationId, (current) => ({
       ...current,
       isRunning: true,
@@ -968,6 +972,7 @@ export function AppBuilder() {
           message: userText,
           model: activeModel,
         }),
+        signal: controller.signal,
       })
 
       if (!response.ok || !response.body) {
@@ -977,17 +982,51 @@ export function AppBuilder() {
 
       await readAgentStream(response.body, conversationId, assistantId)
     } catch (error) {
-      const message = getFriendlyErrorMessage(error)
-      setConversationMessages(conversationId, (current) => [
-        ...current,
-        { id: crypto.randomUUID(), role: "system", content: message },
-      ])
+      if (isAbortError(error) || isCancelledError(error)) {
+        setConversationMessages(conversationId, (current) => [
+          ...current,
+          {
+            id: crypto.randomUUID(),
+            role: "system",
+            content: "Stopped.",
+          },
+        ])
+      } else {
+        const message = getFriendlyErrorMessage(error)
+        setConversationMessages(conversationId, (current) => [
+          ...current,
+          { id: crypto.randomUUID(), role: "system", content: message },
+        ])
+      }
     } finally {
       setConversationMessages(conversationId, finalizeActiveThinkingMessages)
       setConversationRuntime(conversationId, (current) => ({
         ...current,
         isRunning: false,
       }))
+      if (abortControllersRef.current.get(conversationId) === controller) {
+        abortControllersRef.current.delete(conversationId)
+      }
+    }
+  }
+
+  function cancelMessage() {
+    const conversationId = activeConversation.id
+    const controller = abortControllersRef.current.get(conversationId)
+    const sessionId = activeConversation.session?.id
+
+    if (controller) {
+      controller.abort()
+    }
+
+    if (sessionId) {
+      void fetch("/api/chat", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => {
+        // Best-effort cancellation; client-side abort already stopped the stream.
+      })
     }
   }
 
@@ -1033,6 +1072,10 @@ export function AppBuilder() {
     if (parsed.event === "error") {
       const data = parsed.data as { message?: string }
       throw new Error(data.message ?? "The agent run failed.")
+    }
+
+    if (parsed.event === "cancelled") {
+      throw new AgentRunCancelledClientError()
     }
 
     if (parsed.event === "session") {
@@ -1446,19 +1489,32 @@ export function AppBuilder() {
                     />
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      type="submit"
-                      size="icon-sm"
-                      className="size-7 rounded-full bg-foreground text-background hover:bg-foreground/90 [&_svg:not([class*='size-'])]:size-4"
-                      disabled={!canSubmit}
-                      aria-label="Send message"
-                    >
-                      {isRunning ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
+                    {isRunning ? (
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        onClick={cancelMessage}
+                        className="size-7 rounded-full bg-foreground text-background hover:bg-foreground/90 [&_svg:not([class*='size-'])]:size-4"
+                        aria-label="Stop generation"
+                        title="Stop"
+                      >
+                        <Stop
+                          weight="fill"
+                          aria-hidden="true"
+                          className="size-3.5"
+                        />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        size="icon-sm"
+                        className="size-7 rounded-full bg-foreground text-background hover:bg-foreground/90 [&_svg:not([class*='size-'])]:size-4"
+                        disabled={!canSubmit}
+                        aria-label="Send message"
+                      >
                         <ArrowUp aria-hidden="true" className="size-5" />
-                      )}
-                    </Button>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3567,6 +3623,24 @@ function getSavedCursorApiKey() {
   }
 
   return window.localStorage.getItem(SAVED_CURSOR_API_KEY)?.trim()
+}
+
+class AgentRunCancelledClientError extends Error {
+  constructor() {
+    super("The agent run was cancelled.")
+    this.name = "AgentRunCancelledClientError"
+  }
+}
+
+function isAbortError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "ResponseAborted")
+  )
+}
+
+function isCancelledError(error: unknown) {
+  return error instanceof AgentRunCancelledClientError
 }
 
 function getFriendlyErrorMessage(error: unknown) {

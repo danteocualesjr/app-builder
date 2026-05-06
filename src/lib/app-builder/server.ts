@@ -30,6 +30,7 @@ type BuilderSession = {
   devProcess?: ChildProcessWithoutNullStreams
   agent?: SDKAgent
   setupError?: string
+  activeRun?: Run
 }
 
 type PersistedSettings = {
@@ -99,6 +100,15 @@ export class ProjectNameGenerationTimeoutError extends Error {
   constructor(message = "Project name generation timed out. Try again.") {
     super(message)
     this.name = "ProjectNameGenerationTimeoutError"
+  }
+}
+
+export class AgentRunCancelledError extends Error {
+  readonly code = "run_cancelled"
+
+  constructor(message = "The agent run was cancelled.") {
+    super(message)
+    this.name = "AgentRunCancelledError"
   }
 }
 
@@ -266,11 +276,16 @@ export async function streamAgentResponse(
   sessionId: string,
   userMessage: string,
   model: string | undefined,
-  emit: (event: AgentStreamEvent) => void
+  emit: (event: AgentStreamEvent) => void,
+  signal?: AbortSignal
 ) {
   const session = getSession(sessionId)
   await session.ready
   assertSessionReady(session)
+
+  if (signal?.aborted) {
+    throw new AgentRunCancelledError()
+  }
 
   const agent = await getOrCreateAgent(session)
   const modelSelection = model
@@ -281,11 +296,64 @@ export async function streamAgentResponse(
     modelSelection ? { model: modelSelection } : undefined
   )
 
-  for await (const event of run.stream()) {
-    emitSdkMessage(event, emit)
+  session.activeRun = run
+
+  let cancelled = false
+  const onAbort = () => {
+    cancelled = true
+    if (run.supports("cancel")) {
+      run.cancel().catch(() => {
+        // Cancellation is best-effort; surface the resulting status as cancelled below.
+      })
+    }
   }
 
-  await run.wait()
+  if (signal) {
+    if (signal.aborted) {
+      onAbort()
+    } else {
+      signal.addEventListener("abort", onAbort, { once: true })
+    }
+  }
+
+  try {
+    for await (const event of run.stream()) {
+      if (cancelled) {
+        break
+      }
+      emitSdkMessage(event, emit)
+    }
+
+    if (cancelled) {
+      throw new AgentRunCancelledError()
+    }
+
+    const result = await run.wait()
+    if (result.status === "cancelled") {
+      throw new AgentRunCancelledError()
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort)
+    if (session.activeRun === run) {
+      session.activeRun = undefined
+    }
+  }
+}
+
+export async function cancelAgentRun(sessionId: string): Promise<boolean> {
+  const session = sessions.get(sessionId)
+  const run = session?.activeRun
+
+  if (!run || !run.supports("cancel")) {
+    return false
+  }
+
+  try {
+    await run.cancel()
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function generateProjectName(
