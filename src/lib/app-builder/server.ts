@@ -17,6 +17,15 @@ import {
 
 import { generatedAppFiles } from "./template"
 
+type LogEntry = {
+  id: number
+  source: string
+  line: string
+  timestamp: number
+}
+
+type LogListener = (entry: LogEntry) => void
+
 type BuilderSession = {
   id: string
   apiKey: string
@@ -25,13 +34,17 @@ type BuilderSession = {
   projectPath: string
   previewUrl: string
   port: number
-  logs: string[]
+  logs: LogEntry[]
+  logSequence: number
+  logListeners: Set<LogListener>
   ready: Promise<void>
   devProcess?: ChildProcessWithoutNullStreams
   agent?: SDKAgent
   setupError?: string
   activeRun?: Run
 }
+
+export type SessionLogEntry = LogEntry
 
 type PersistedSettings = {
   cursorApiKey?: string
@@ -225,6 +238,8 @@ export async function createSession(apiKey: string): Promise<PublicSession> {
     port,
     previewUrl: `http://127.0.0.1:${port}`,
     logs: [],
+    logSequence: 0,
+    logListeners: new Set(),
     ready: Promise.resolve(),
   }
 
@@ -232,7 +247,7 @@ export async function createSession(apiKey: string): Promise<PublicSession> {
   const readyPromise = prepareSession(session).catch((error: unknown) => {
     const message = getErrorMessage(error)
     session.setupError = message
-    session.logs.push(`[setup] ${message}`)
+    appendSessionLog(session, "setup", message)
     throw error
   })
   session.ready = readyPromise
@@ -1113,7 +1128,7 @@ async function startDevServer(session: BuilderSession) {
   pipeProcessLogs(child, session, "vite")
 
   child.once("exit", (code) => {
-    session.logs.push(`vite exited with code ${code ?? "unknown"}`)
+    appendSessionLog(session, "vite", `exited with code ${code ?? "unknown"}`)
     session.devProcess = undefined
   })
 
@@ -1158,12 +1173,67 @@ function pipeProcessLogs(
   label: string
 ) {
   const append = (chunk: Buffer) => {
-    session.logs.push(`[${label}] ${chunk.toString()}`)
-    session.logs.splice(0, Math.max(0, session.logs.length - 200))
+    const text = chunk.toString()
+    for (const line of splitLogChunk(text)) {
+      appendSessionLog(session, label, line)
+    }
   }
 
   child.stdout.on("data", append)
   child.stderr.on("data", append)
+}
+
+const SESSION_LOG_BUFFER_LIMIT = 500
+
+function splitLogChunk(text: string): string[] {
+  return text
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+}
+
+function appendSessionLog(
+  session: BuilderSession,
+  source: string,
+  line: string
+) {
+  session.logSequence += 1
+  const entry: LogEntry = {
+    id: session.logSequence,
+    source,
+    line,
+    timestamp: Date.now(),
+  }
+
+  session.logs.push(entry)
+  const overflow = session.logs.length - SESSION_LOG_BUFFER_LIMIT
+  if (overflow > 0) {
+    session.logs.splice(0, overflow)
+  }
+
+  for (const listener of session.logListeners) {
+    try {
+      listener(entry)
+    } catch {
+      // Listener errors must not break log fan-out.
+    }
+  }
+}
+
+export function subscribeSessionLogs(
+  sessionId: string,
+  listener: LogListener
+): { initial: LogEntry[]; unsubscribe: () => void } {
+  const session = getSession(sessionId)
+  session.logListeners.add(listener)
+
+  return {
+    initial: [...session.logs],
+    unsubscribe: () => {
+      session.logListeners.delete(listener)
+    },
+  }
 }
 
 function waitForPort(port: number, timeoutMs = 30_000): Promise<void> {

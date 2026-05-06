@@ -3,6 +3,7 @@
 import {
   FormEvent,
   type MouseEvent as ReactMouseEvent,
+  type UIEvent as ReactUIEvent,
   useEffect,
   useMemo,
   useRef,
@@ -238,6 +239,7 @@ export function AppBuilder() {
     }
   })
   const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
+  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(
     () => !isCursorApiKey(getSavedCursorApiKey() ?? "")
   )
@@ -1605,11 +1607,25 @@ export function AppBuilder() {
       {session ? (
         <Card className="flex min-w-0 flex-1 gap-0 overflow-hidden rounded-none border-0 py-0 shadow-none ring-0">
           <CardContent className="flex min-h-0 flex-1 flex-col bg-background p-0">
+            <PreviewToolbar
+              previewUrl={session.previewUrl}
+              isLogsOpen={isLogsPanelOpen}
+              onToggleLogs={() =>
+                setIsLogsPanelOpen((current) => !current)
+              }
+            />
             <iframe
               title="Generated app preview"
               src={session.previewUrl}
               className="min-h-0 flex-1 border-0 bg-white"
             />
+            {isLogsPanelOpen ? (
+              <LogsPanel
+                key={session.id}
+                sessionId={session.id}
+                onClose={() => setIsLogsPanelOpen(false)}
+              />
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
@@ -3362,6 +3378,238 @@ function CollapsedProjectSidebar({
       </Button>
     </div>
   )
+}
+
+function PreviewToolbar({
+  previewUrl,
+  isLogsOpen,
+  onToggleLogs,
+}: {
+  previewUrl: string
+  isLogsOpen: boolean
+  onToggleLogs: () => void
+}) {
+  return (
+    <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b bg-muted/30 px-3 text-xs text-muted-foreground">
+      <span className="truncate font-mono" title={previewUrl}>
+        {previewUrl}
+      </span>
+      <Button
+        type="button"
+        variant={isLogsOpen ? "secondary" : "ghost"}
+        size="icon-sm"
+        className="size-7 rounded-md"
+        aria-label={isLogsOpen ? "Hide logs" : "Show logs"}
+        aria-pressed={isLogsOpen}
+        title={isLogsOpen ? "Hide logs" : "Show logs"}
+        onClick={onToggleLogs}
+      >
+        <Terminal aria-hidden="true" className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
+type LogEntryView = {
+  id: number
+  source: string
+  line: string
+  timestamp: number
+}
+
+function LogsPanel({
+  sessionId,
+  onClose,
+}: {
+  sessionId: string
+  onClose: () => void
+}) {
+  const [entries, setEntries] = useState<LogEntryView[]>([])
+  const [status, setStatus] = useState<
+    "connecting" | "live" | "error"
+  >("connecting")
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const isPinnedToBottomRef = useRef(true)
+
+  useEffect(() => {
+    const source = new EventSource(
+      `/api/sessions/${encodeURIComponent(sessionId)}/logs`
+    )
+
+    const ingest = (incoming: LogEntryView[]) => {
+      if (incoming.length === 0) {
+        return
+      }
+      setEntries((current) => {
+        const merged = [...current, ...incoming]
+        const overflow = merged.length - 500
+        return overflow > 0 ? merged.slice(overflow) : merged
+      })
+    }
+
+    source.addEventListener("snapshot", (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data) as {
+          entries?: LogEntryView[]
+        }
+        ingest(data.entries ?? [])
+        setStatus("live")
+      } catch {
+        // Ignore malformed snapshots; live updates will recover the view.
+      }
+    })
+
+    source.addEventListener("log", (event) => {
+      try {
+        const entry = JSON.parse(
+          (event as MessageEvent).data
+        ) as LogEntryView
+        ingest([entry])
+      } catch {
+        // Ignore malformed entries.
+      }
+    })
+
+    source.addEventListener("error", (event) => {
+      const data = (event as MessageEvent).data
+      if (typeof data === "string" && data.length > 0) {
+        try {
+          const parsed = JSON.parse(data) as { message?: string }
+          if (parsed.message) {
+            setErrorMessage(parsed.message)
+          }
+        } catch {
+          setErrorMessage("Lost connection to log stream.")
+        }
+      } else {
+        setErrorMessage("Lost connection to log stream.")
+      }
+      setStatus("error")
+    })
+
+    return () => {
+      source.close()
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    if (!isPinnedToBottomRef.current) {
+      return
+    }
+    const node = scrollRef.current
+    if (!node) {
+      return
+    }
+    node.scrollTop = node.scrollHeight
+  }, [entries])
+
+  function handleScroll(event: ReactUIEvent<HTMLDivElement>) {
+    const node = event.currentTarget
+    const distanceFromBottom =
+      node.scrollHeight - node.scrollTop - node.clientHeight
+    isPinnedToBottomRef.current = distanceFromBottom < 24
+  }
+
+  function clearLogs() {
+    setEntries([])
+    isPinnedToBottomRef.current = true
+  }
+
+  return (
+    <div className="flex h-64 shrink-0 flex-col border-t bg-zinc-950 text-zinc-100">
+      <div className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 px-3 text-xs">
+        <div className="flex items-center gap-2">
+          <Terminal aria-hidden="true" className="size-3.5 text-zinc-400" />
+          <span className="font-medium text-zinc-200">Logs</span>
+          <LogsStatusBadge status={status} />
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={clearLogs}
+            className="rounded-sm px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            title="Clear logs"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-sm px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            title="Close logs"
+            aria-label="Close logs"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
+      >
+        {entries.length === 0 && status !== "error" ? (
+          <p className="text-zinc-500">
+            {status === "connecting"
+              ? "Connecting to session log stream..."
+              : "Waiting for output..."}
+          </p>
+        ) : null}
+        {errorMessage && status === "error" ? (
+          <p className="text-rose-300">{errorMessage}</p>
+        ) : null}
+        {entries.map((entry) => (
+          <div key={entry.id} className="whitespace-pre-wrap break-words">
+            <span className="mr-2 text-zinc-500">
+              {formatLogTimestamp(entry.timestamp)}
+            </span>
+            <span className="mr-2 text-emerald-300">[{entry.source}]</span>
+            <span className="text-zinc-100">{entry.line}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LogsStatusBadge({
+  status,
+}: {
+  status: "connecting" | "live" | "error"
+}) {
+  if (status === "live") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-emerald-300">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
+        Live
+      </span>
+    )
+  }
+
+  if (status === "connecting") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-400">
+        <span className="size-1.5 rounded-full bg-zinc-500" />
+        Connecting
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-rose-300">
+      <span className="size-1.5 rounded-full bg-rose-400" />
+      Disconnected
+    </span>
+  )
+}
+
+function formatLogTimestamp(value: number) {
+  const date = new Date(value)
+  const hours = date.getHours().toString().padStart(2, "0")
+  const minutes = date.getMinutes().toString().padStart(2, "0")
+  const seconds = date.getSeconds().toString().padStart(2, "0")
+  return `${hours}:${minutes}:${seconds}`
 }
 
 function ProjectChatHeader({
