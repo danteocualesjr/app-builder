@@ -1671,7 +1671,7 @@ export function AppBuilder() {
                   className={cn(
                     "flex flex-col gap-1 text-sm leading-6",
                     getMessageDisplayRole(message) === "user" &&
-                      "w-fit max-w-[85%] self-end rounded-md bg-muted/80 px-3 py-2 text-foreground",
+                      "w-fit max-w-[85%] self-end rounded-2xl bg-muted/80 px-3 py-2 text-foreground shadow-sm",
                     getMessageDisplayRole(message) === "assistant" &&
                       "py-1 text-foreground",
                     getMessageDisplayRole(message) === "activity" &&
@@ -2997,7 +2997,7 @@ function StarterPrompts({
             key={entry.title}
             type="button"
             onClick={() => onSelect(entry.prompt)}
-            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-[color,background-color,border-color,box-shadow] hover:border-foreground/20 hover:bg-muted hover:text-foreground hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <span className="text-sm font-medium text-foreground">
               {entry.title}
