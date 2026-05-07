@@ -3144,12 +3144,12 @@ function ApiKeyOnboardingModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6 backdrop-blur-sm">
       <form
         role="dialog"
         aria-modal="true"
         aria-labelledby="api-key-onboarding-title"
-        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg"
+        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl"
         onSubmit={onSubmit}
       >
         <div className="border-b px-4 py-3">
