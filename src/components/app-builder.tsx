@@ -4381,17 +4381,89 @@ function MarkdownMessage({ content }: { content: string }) {
               {children}
             </code>
           ),
-          pre: ({ children }) => (
-            <pre className="my-2 max-w-full overflow-x-auto rounded-md border bg-muted p-3 text-sm text-foreground">
-              {children}
-            </pre>
-          ),
+          pre: ({ children }) => <MarkdownCodeBlock>{children}</MarkdownCodeBlock>,
         }}
       >
         {content}
       </ReactMarkdown>
     </div>
   )
+}
+
+function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
+  const codeText = useMemo(() => extractTextContent(children), [children])
+  const [isCopied, setIsCopied] = useState(false)
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  async function copy() {
+    if (typeof navigator === "undefined" || !navigator.clipboard || !codeText) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(codeText)
+      setIsCopied(true)
+      if (resetTimeoutRef.current) {
+        clearTimeout(resetTimeoutRef.current)
+      }
+      resetTimeoutRef.current = setTimeout(() => setIsCopied(false), 1_500)
+    } catch {
+      // Clipboard access may be blocked; the code is still selectable inside the block.
+    }
+  }
+
+  return (
+    <div className="group relative my-2 max-w-full">
+      <pre className="max-w-full overflow-x-auto rounded-md border bg-muted p-3 text-sm text-foreground">
+        {children}
+      </pre>
+      {codeText ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute right-1.5 top-1.5 size-6 rounded-md bg-background/80 text-muted-foreground opacity-0 backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+          aria-label={isCopied ? "Code copied" : "Copy code"}
+          title={isCopied ? "Copied!" : "Copy code"}
+          onClick={copy}
+        >
+          {isCopied ? (
+            <Check
+              aria-hidden="true"
+              className="size-3.5 text-emerald-500"
+              weight="bold"
+            />
+          ) : (
+            <Copy aria-hidden="true" className="size-3.5" />
+          )}
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+function extractTextContent(node: React.ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") {
+    return ""
+  }
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node)
+  }
+  if (Array.isArray(node)) {
+    return node.map(extractTextContent).join("")
+  }
+  if (typeof node === "object" && "props" in node) {
+    const element = node as { props?: { children?: React.ReactNode } }
+    return extractTextContent(element.props?.children)
+  }
+  return ""
 }
 
 function parseServerSentEvent(chunk: string) {
