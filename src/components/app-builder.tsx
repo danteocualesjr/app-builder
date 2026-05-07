@@ -251,6 +251,18 @@ const PREVIEW_DEVICE_OPTIONS: ReadonlyArray<{
 const SAVED_CURSOR_API_KEY = "app-builder.cursor-api-key"
 const SAVED_CHAT_STATE = "app-builder.chat-state"
 const CHAT_WIDTH_DEFAULT = 400
+const PREVIEW_DEVICE_STORAGE_KEY = "app-builder.preview-device-size"
+
+function readStoredPreviewDeviceSize(): PreviewDeviceSize {
+  if (typeof window === "undefined") {
+    return "desktop"
+  }
+  const raw = window.localStorage.getItem(PREVIEW_DEVICE_STORAGE_KEY)
+  if (raw === "mobile" || raw === "tablet" || raw === "desktop") {
+    return raw
+  }
+  return "desktop"
+}
 
 const STARTER_PROMPTS: ReadonlyArray<{
   title: string
@@ -328,7 +340,7 @@ export function AppBuilder() {
   const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
   const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
   const [previewDeviceSize, setPreviewDeviceSize] =
-    useState<PreviewDeviceSize>("desktop")
+    useState<PreviewDeviceSize>(readStoredPreviewDeviceSize)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(
     () => !isCursorApiKey(getSavedCursorApiKey() ?? "")
   )
@@ -378,6 +390,13 @@ export function AppBuilder() {
   useEffect(() => {
     conversationsRef.current = conversations
   }, [conversations])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(PREVIEW_DEVICE_STORAGE_KEY, previewDeviceSize)
+  }, [previewDeviceSize])
 
   useEffect(() => {
     let cancelled = false
