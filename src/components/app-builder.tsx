@@ -14,6 +14,7 @@ import {
   BrainIcon as Brain,
   CaretDownIcon as CaretDown,
   CubeIcon as Cube,
+  DesktopIcon as Desktop,
   FileTextIcon as FileText,
   FilesIcon as Files,
   FlaskIcon as FlaskConical,
@@ -22,6 +23,7 @@ import {
   InfoIcon as Info,
   ListChecksIcon as ListTodo,
   MagnifyingGlassIcon as Search,
+  MoonIcon as Moon,
   PencilIcon as Pencil,
   PlusIcon as Plus,
   ArrowUpIcon as ArrowUp,
@@ -30,6 +32,7 @@ import {
   SparkleIcon as Sparkles,
   SpinnerGapIcon as Loader2,
   StopIcon as Stop,
+  SunIcon as Sun,
   TerminalWindowIcon as Terminal,
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
@@ -65,6 +68,12 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import {
+  applyTheme,
+  isThemePreference,
+  THEME_STORAGE_KEY,
+  type ThemePreference,
+} from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 type Session = {
@@ -247,6 +256,7 @@ export function AppBuilder() {
   const [isApiKeyClearConfirming, setIsApiKeyClearConfirming] = useState(false)
   const [titleGenerationConversationIds, setTitleGenerationConversationIds] =
     useState(() => new Set<string>())
+  const [themePreference, setThemePreference] = useTheme()
   const bottomRef = useRef<HTMLDivElement>(null)
   const conversationsRef = useRef(conversations)
   const restoredConversationIdsRef = useRef(new Set<string>())
@@ -1408,6 +1418,7 @@ export function AppBuilder() {
           isCreatingSession={isCreatingSession}
           titleGenerationConversationIds={titleGenerationConversationIds}
           sessionError={sessionError}
+          themePreference={themePreference}
           user={session?.user ?? null}
           onApiKeyChange={setApiKey}
           onApiKeySettingsOpenChange={setApiKeySettingsOpen}
@@ -1427,6 +1438,7 @@ export function AppBuilder() {
           onRenameConversation={renameConversation}
           onRequireApiKey={openOnboarding}
           onSubmitApiKey={submitApiKeySettings}
+          onThemePreferenceChange={setThemePreference}
         />
       ) : (
         <CollapsedProjectSidebar
@@ -2874,6 +2886,7 @@ function ConversationSidebar({
   isApiKeySettingsOpen,
   isCreatingSession,
   sessionError,
+  themePreference,
   titleGenerationConversationIds,
   user,
   onApiKeyChange,
@@ -2887,6 +2900,7 @@ function ConversationSidebar({
   onRequireApiKey,
   onSelectConversation,
   onSubmitApiKey,
+  onThemePreferenceChange,
 }: {
   conversations: Conversation[]
   activeConversationId: string
@@ -2896,6 +2910,7 @@ function ConversationSidebar({
   isApiKeySettingsOpen: boolean
   isCreatingSession: boolean
   sessionError: string | null
+  themePreference: ThemePreference
   titleGenerationConversationIds: ReadonlySet<string>
   user: CurrentUser | null
   onApiKeyChange: (apiKey: string) => void
@@ -2909,6 +2924,7 @@ function ConversationSidebar({
   onRequireApiKey: () => void
   onSelectConversation: (conversationId: string) => void
   onSubmitApiKey: (event: FormEvent<HTMLFormElement>) => void
+  onThemePreferenceChange: (preference: ThemePreference) => void
 }) {
   const [contextMenu, setContextMenu] = useState<ProjectContextMenuState | null>(
     null
@@ -3243,6 +3259,10 @@ function ConversationSidebar({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <ThemeToggle
+            preference={themePreference}
+            onPreferenceChange={onThemePreferenceChange}
+          />
           <ApiKeySettingsPopover
             apiKey={apiKey}
             hasSavedApiKey={hasSavedApiKey}
@@ -3356,6 +3376,89 @@ function ApiKeySettingsPopover({
       </PopoverContent>
     </Popover>
   )
+}
+
+function ThemeToggle({
+  preference,
+  onPreferenceChange,
+}: {
+  preference: ThemePreference
+  onPreferenceChange: (preference: ThemePreference) => void
+}) {
+  const next = getNextThemePreference(preference)
+  const { icon: Icon, label } = getThemePresentation(preference)
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="rounded-md text-muted-foreground"
+      aria-label={`Theme: ${label}. Switch to ${getThemePresentation(next).label}.`}
+      title={`Theme: ${label}`}
+      onClick={() => onPreferenceChange(next)}
+    >
+      <Icon aria-hidden="true" />
+    </Button>
+  )
+}
+
+function getThemePresentation(preference: ThemePreference) {
+  if (preference === "light") {
+    return { icon: Sun, label: "Light" } as const
+  }
+  if (preference === "dark") {
+    return { icon: Moon, label: "Dark" } as const
+  }
+  return { icon: Desktop, label: "System" } as const
+}
+
+function getNextThemePreference(current: ThemePreference): ThemePreference {
+  if (current === "system") {
+    return "light"
+  }
+  if (current === "light") {
+    return "dark"
+  }
+  return "system"
+}
+
+function useTheme(): [ThemePreference, (preference: ThemePreference) => void] {
+  const [preference, setPreference] = useState<ThemePreference>(
+    readStoredThemePreference
+  )
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    applyTheme(preference)
+    if (preference !== "system") {
+      return
+    }
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const onChange = () => applyTheme("system")
+    media.addEventListener("change", onChange)
+    return () => media.removeEventListener("change", onChange)
+  }, [preference])
+
+  const updatePreference = (next: ThemePreference) => {
+    setPreference(next)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(THEME_STORAGE_KEY, next)
+    }
+    applyTheme(next)
+  }
+
+  return [preference, updatePreference]
+}
+
+function readStoredThemePreference(): ThemePreference {
+  if (typeof window === "undefined") {
+    return "system"
+  }
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return isThemePreference(stored) ? stored : "system"
 }
 
 function CollapsedProjectSidebar({
