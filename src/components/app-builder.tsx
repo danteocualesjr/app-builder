@@ -4200,6 +4200,7 @@ function LogsPanel({
   const [searchQuery, setSearchQuery] = useState("")
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [isCopied, setIsCopied] = useState(false)
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isPinnedToBottomRef = useRef(true)
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4321,11 +4322,23 @@ function LogsPanel({
     const distanceFromBottom =
       node.scrollHeight - node.scrollTop - node.clientHeight
     isPinnedToBottomRef.current = distanceFromBottom < 24
+    setShowJumpToLatest(distanceFromBottom >= 48 && entries.length > 0)
+  }
+
+  function jumpToLatestLogs() {
+    const node = scrollRef.current
+    if (!node) {
+      return
+    }
+    node.scrollTop = node.scrollHeight
+    isPinnedToBottomRef.current = true
+    setShowJumpToLatest(false)
   }
 
   function clearLogs() {
     setEntries([])
     isPinnedToBottomRef.current = true
+    setShowJumpToLatest(false)
   }
 
   function formatEntriesAsText(items: LogEntryView[]) {
@@ -4474,11 +4487,12 @@ function LogsPanel({
           ))}
         </select>
       </div>
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
-      >
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="h-full min-h-0 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
+        >
         {entries.length === 0 && status !== "error" ? (
           <p className="text-zinc-500">
             {status === "connecting"
@@ -4503,6 +4517,20 @@ function LogsPanel({
             <span className="text-zinc-100">{entry.line}</span>
           </div>
         ))}
+        </div>
+        {showJumpToLatest ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-2 pt-6">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="pointer-events-auto border border-zinc-600 bg-zinc-800 text-xs text-zinc-100 shadow-md hover:bg-zinc-700"
+              onClick={jumpToLatestLogs}
+            >
+              Jump to latest
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   )
