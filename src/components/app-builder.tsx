@@ -3768,7 +3768,7 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="rounded-md text-muted-foreground"
+      className="rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted"
       aria-label={`Theme: ${label}. Switch to ${getThemePresentation(next).label}.`}
       title={`Theme: ${label}`}
       onClick={() => onPreferenceChange(next)}
@@ -3842,18 +3842,20 @@ function CollapsedProjectSidebar({
   onShowSidebar: () => void
 }) {
   return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="rounded-md text-muted-foreground"
-        aria-label="Show projects sidebar"
-        title="Show projects sidebar"
-        onClick={onShowSidebar}
-      >
-        <PanelLeftOpen aria-hidden="true" />
-      </Button>
+    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-3">
+      <div className="rounded-lg bg-muted/50 p-0.5 shadow-inner">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="rounded-md text-muted-foreground"
+          aria-label="Show projects sidebar"
+          title="Show projects sidebar"
+          onClick={onShowSidebar}
+        >
+          <PanelLeftOpen aria-hidden="true" />
+        </Button>
+      </div>
     </div>
   )
 }
