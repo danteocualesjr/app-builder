@@ -19,6 +19,8 @@ import {
   CopyIcon as Copy,
   CubeIcon as Cube,
   DesktopIcon as Desktop,
+  DeviceMobileIcon as DeviceMobile,
+  DeviceTabletIcon as DeviceTablet,
   FileTextIcon as FileText,
   FilesIcon as Files,
   FlaskIcon as FlaskConical,
@@ -27,6 +29,7 @@ import {
   InfoIcon as Info,
   ListChecksIcon as ListTodo,
   MagnifyingGlassIcon as Search,
+  MonitorIcon as Monitor,
   MoonIcon as Moon,
   PencilIcon as Pencil,
   PlusIcon as Plus,
@@ -211,6 +214,38 @@ type ProjectContextMenuState = {
   y: number
 }
 
+type PreviewDeviceSize = "mobile" | "tablet" | "desktop"
+
+const PREVIEW_DEVICE_OPTIONS: ReadonlyArray<{
+  id: PreviewDeviceSize
+  label: string
+  description: string
+  icon: PhosphorIcon
+  width: number | null
+}> = [
+  {
+    id: "mobile",
+    label: "Mobile",
+    description: "390 × auto",
+    icon: DeviceMobile,
+    width: 390,
+  },
+  {
+    id: "tablet",
+    label: "Tablet",
+    description: "820 × auto",
+    icon: DeviceTablet,
+    width: 820,
+  },
+  {
+    id: "desktop",
+    label: "Desktop",
+    description: "Fill",
+    icon: Monitor,
+    width: null,
+  },
+]
+
 const SAVED_CURSOR_API_KEY = "app-builder.cursor-api-key"
 const SAVED_CHAT_STATE = "app-builder.chat-state"
 const CHAT_WIDTH_DEFAULT = 400
@@ -254,6 +289,8 @@ export function AppBuilder() {
   const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
   const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
   const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
+  const [previewDeviceSize, setPreviewDeviceSize] =
+    useState<PreviewDeviceSize>("desktop")
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(
     () => !isCursorApiKey(getSavedCursorApiKey() ?? "")
   )
@@ -1627,18 +1664,19 @@ export function AppBuilder() {
             <PreviewToolbar
               previewUrl={session.previewUrl}
               isLogsOpen={isLogsPanelOpen}
+              previewDeviceSize={previewDeviceSize}
               onRefreshPreview={() =>
                 setPreviewRefreshCounter((current) => current + 1)
               }
+              onPreviewDeviceSizeChange={setPreviewDeviceSize}
               onToggleLogs={() =>
                 setIsLogsPanelOpen((current) => !current)
               }
             />
-            <iframe
+            <PreviewFrame
               key={`${session.id}:${previewRefreshCounter}`}
-              title="Generated app preview"
-              src={session.previewUrl}
-              className="min-h-0 flex-1 border-0 bg-white"
+              previewUrl={session.previewUrl}
+              deviceSize={previewDeviceSize}
             />
             {isLogsPanelOpen ? (
               <LogsPanel
@@ -3492,14 +3530,54 @@ function CollapsedProjectSidebar({
   )
 }
 
+function PreviewFrame({
+  previewUrl,
+  deviceSize,
+}: {
+  previewUrl: string
+  deviceSize: PreviewDeviceSize
+}) {
+  const option = PREVIEW_DEVICE_OPTIONS.find((entry) => entry.id === deviceSize)
+  const width = option?.width ?? null
+
+  if (!width) {
+    return (
+      <iframe
+        title="Generated app preview"
+        src={previewUrl}
+        className="min-h-0 flex-1 border-0 bg-white"
+      />
+    )
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-muted/20 p-6">
+      <div
+        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg"
+        style={{ width, maxWidth: "100%" }}
+      >
+        <iframe
+          title="Generated app preview"
+          src={previewUrl}
+          className="min-h-0 flex-1 border-0 bg-white"
+        />
+      </div>
+    </div>
+  )
+}
+
 function PreviewToolbar({
   previewUrl,
   isLogsOpen,
+  previewDeviceSize,
+  onPreviewDeviceSizeChange,
   onRefreshPreview,
   onToggleLogs,
 }: {
   previewUrl: string
   isLogsOpen: boolean
+  previewDeviceSize: PreviewDeviceSize
+  onPreviewDeviceSizeChange: (size: PreviewDeviceSize) => void
   onRefreshPreview: () => void
   onToggleLogs: () => void
 }) {
@@ -3542,6 +3620,41 @@ function PreviewToolbar({
         {previewUrl}
       </a>
       <div className="flex shrink-0 items-center gap-1">
+        <ToggleGroup
+          value={[previewDeviceSize]}
+          onValueChange={(next) => {
+            const value = next[0]
+            if (
+              value === "mobile" ||
+              value === "tablet" ||
+              value === "desktop"
+            ) {
+              onPreviewDeviceSizeChange(value)
+            }
+          }}
+          size="sm"
+          variant="outline"
+          className="mr-1 h-7 rounded-md border-0 bg-transparent data-[size=sm]:rounded-md"
+        >
+          {PREVIEW_DEVICE_OPTIONS.map((option) => {
+            const Icon = option.icon
+            const isActive = option.id === previewDeviceSize
+            return (
+              <ToggleGroupItem
+                key={option.id}
+                value={option.id}
+                aria-label={`${option.label} preview (${option.description})`}
+                title={`${option.label} (${option.description})`}
+                className={cn(
+                  "size-7 rounded-md p-0 text-muted-foreground group-data-horizontal/toggle-group:data-[spacing=0]:first:rounded-l-md group-data-horizontal/toggle-group:data-[spacing=0]:last:rounded-r-md data-[state=on]:bg-muted data-[state=on]:text-foreground",
+                  isActive && "ring-1 ring-inset ring-border"
+                )}
+              >
+                <Icon aria-hidden="true" className="size-4" />
+              </ToggleGroupItem>
+            )
+          })}
+        </ToggleGroup>
         <Button
           type="button"
           variant="ghost"
