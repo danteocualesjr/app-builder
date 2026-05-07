@@ -249,6 +249,42 @@ const PREVIEW_DEVICE_OPTIONS: ReadonlyArray<{
 const SAVED_CURSOR_API_KEY = "app-builder.cursor-api-key"
 const SAVED_CHAT_STATE = "app-builder.chat-state"
 const CHAT_WIDTH_DEFAULT = 400
+
+const STARTER_PROMPTS: ReadonlyArray<{
+  title: string
+  prompt: string
+}> = [
+  {
+    title: "Todo list",
+    prompt:
+      "Build a clean to-do list app. I should be able to add, complete, and delete tasks, and the list should persist across page reloads using localStorage.",
+  },
+  {
+    title: "Markdown editor",
+    prompt:
+      "Build a split-pane markdown editor: a textarea on the left and a live HTML preview on the right. Support headings, bold/italic, lists, links, and code blocks.",
+  },
+  {
+    title: "Pomodoro timer",
+    prompt:
+      "Build a Pomodoro timer with 25-minute work blocks and 5-minute breaks, a start/pause/reset control, and a counter for completed sessions.",
+  },
+  {
+    title: "Tic-tac-toe",
+    prompt:
+      "Build a two-player tic-tac-toe game with a 3x3 board, a status line showing whose turn it is, win/draw detection, and a reset button.",
+  },
+  {
+    title: "Color palette",
+    prompt:
+      "Build a color palette generator that shows five harmonious colors with hex codes, a button to regenerate, and click-to-copy on each swatch.",
+  },
+  {
+    title: "Weather card",
+    prompt:
+      "Build a friendly weather widget that lets me type a city, then displays a mocked current temperature, condition, and a 3-day forecast in cards.",
+  },
+]
 const GROUPED_FILE_TARGET_LIMIT = 4
 const PROJECT_NAME_TIMEOUT_MS = 15_000
 const SAVED_API_KEY_READY_MESSAGE =
@@ -300,6 +336,7 @@ export function AppBuilder() {
     useState(() => new Set<string>())
   const [themePreference, setThemePreference] = useTheme()
   const bottomRef = useRef<HTMLDivElement>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement>(null)
   const conversationsRef = useRef(conversations)
   const restoredConversationIdsRef = useRef(new Set<string>())
   const titleGenerationConversationIdsRef = useRef(new Set<string>())
@@ -1523,6 +1560,18 @@ export function AppBuilder() {
                 </div>
               ) : null}
 
+              {session &&
+              !showProjectSetup &&
+              visibleMessages.length === 0 &&
+              !isCursorTyping ? (
+                <StarterPrompts
+                  onSelect={(prompt) => {
+                    setConversationInput(activeConversation.id, prompt)
+                    chatInputRef.current?.focus()
+                  }}
+                />
+              ) : null}
+
               {visibleMessages.map((message) => (
                 <div
                   key={message.id}
@@ -1595,6 +1644,7 @@ export function AppBuilder() {
             >
               <div className="rounded-xl border bg-background p-3 shadow-sm transition-colors focus-within:border-ring/60 focus-within:ring-3 focus-within:ring-ring/15">
                 <Textarea
+                  ref={chatInputRef}
                   value={input}
                   onChange={(event) =>
                     setConversationInput(
@@ -2823,6 +2873,45 @@ function getActivitySymbol(content: string) {
   }
 
   return (words[0] ?? "?").slice(0, 2).padEnd(2, "?").toUpperCase()
+}
+
+function StarterPrompts({
+  onSelect,
+}: {
+  onSelect: (prompt: string) => void
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-3 py-6">
+      <div className="flex flex-col gap-1 text-center">
+        <div className="mx-auto grid size-8 place-items-center rounded-lg bg-muted text-foreground">
+          <Sparkles aria-hidden="true" weight="duotone" />
+        </div>
+        <h2 className="text-sm font-semibold text-foreground">
+          What do you want to build?
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Pick a starter idea or describe your own app to get going.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {STARTER_PROMPTS.map((entry) => (
+          <button
+            key={entry.title}
+            type="button"
+            onClick={() => onSelect(entry.prompt)}
+            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <span className="text-sm font-medium text-foreground">
+              {entry.title}
+            </span>
+            <span className="line-clamp-2 text-xs text-muted-foreground">
+              {entry.prompt}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function AssistantPending() {
