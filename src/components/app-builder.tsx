@@ -1756,7 +1756,10 @@ export function AppBuilder() {
                   disabled={isRunning}
                   className="max-h-40 min-h-16 resize-none border-0 bg-transparent px-1 py-0 text-base shadow-none focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent"
                 />
-                <div className="flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
+                <p className="px-1 pt-1.5 text-[11px] leading-4 text-muted-foreground">
+                  Enter to send · Shift+Enter for a new line
+                </p>
+                <div className="flex items-center justify-between gap-2 pt-2 text-xs text-muted-foreground">
                   <div className="flex min-w-0 items-center gap-2">
                     <ModelConfigPopover
                       models={availableModels}
