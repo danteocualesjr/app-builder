@@ -779,6 +779,9 @@ export function AppBuilder() {
     }))
     setActiveConversationId(conversation.id)
     setApiKey("")
+    queueMicrotask(() => {
+      chatInputRef.current?.focus()
+    })
   }
 
   function openOnboarding() {
