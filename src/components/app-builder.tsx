@@ -2527,12 +2527,12 @@ function ActivityMessage({ message }: { message: ChatMessage }) {
   const count = message.activityCount ?? getActivityCount(content)
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 leading-relaxed">
       <span
         aria-hidden="true"
-        className="grid size-4 shrink-0 place-items-center rounded-sm bg-muted/70 text-muted-foreground/80"
+        className="grid size-5 shrink-0 place-items-center rounded-sm bg-muted/70 text-muted-foreground/80"
       >
-        <Icon className="size-2.5" />
+        <Icon className="size-3" />
       </span>
       <span className="min-w-0 truncate text-muted-foreground/85">
         {segments.map((segment, index) =>
@@ -4769,6 +4769,28 @@ function MarkdownMessage({ content }: { content: string }) {
             <ol className="ml-4 list-decimal whitespace-normal">{children}</ol>
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
+          strong: ({ children }) => (
+            <strong className="font-semibold text-foreground">{children}</strong>
+          ),
+          a: ({ href, children }) => {
+            const isHttp =
+              typeof href === "string" &&
+              (href.startsWith("http:") || href.startsWith("https:"))
+            return (
+              <a
+                href={href}
+                className="font-medium text-primary underline decoration-primary/30 underline-offset-2 transition-colors hover:decoration-primary"
+                {...(isHttp ? { target: "_blank", rel: "noreferrer" } : {})}
+              >
+                {children}
+              </a>
+            )
+          },
+          blockquote: ({ children }) => (
+            <blockquote className="my-2 border-l-2 border-muted-foreground/30 pl-3 text-muted-foreground">
+              {children}
+            </blockquote>
+          ),
           code: ({ children }) => (
             <code className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
               {children}
