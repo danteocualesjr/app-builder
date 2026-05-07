@@ -4866,6 +4866,7 @@ function MarkdownMessage({ content }: { content: string }) {
 }
 
 function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
+  const { showToast } = useToast()
   const codeText = useMemo(() => extractTextContent(children), [children])
   const [isCopied, setIsCopied] = useState(false)
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4885,12 +4886,20 @@ function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
     try {
       await navigator.clipboard.writeText(codeText)
       setIsCopied(true)
+      showToast({
+        title: "Code copied",
+        description: "The snippet is on the clipboard.",
+      })
       if (resetTimeoutRef.current) {
         clearTimeout(resetTimeoutRef.current)
       }
       resetTimeoutRef.current = setTimeout(() => setIsCopied(false), 1_500)
     } catch {
-      // Clipboard access may be blocked; the code is still selectable inside the block.
+      showToast({
+        title: "Could not copy code",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
     }
   }
 
