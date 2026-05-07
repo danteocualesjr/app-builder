@@ -3144,7 +3144,7 @@ function ApiKeyOnboardingModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6 backdrop-blur-sm">
       <form
         role="dialog"
         aria-modal="true"
