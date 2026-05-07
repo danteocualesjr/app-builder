@@ -1812,6 +1812,11 @@ export function AppBuilder() {
                     )
                   }
                   onKeyDown={(event) => {
+                    if (event.key === "Escape" && input.trim() && !isRunning) {
+                      event.preventDefault()
+                      setConversationInput(activeConversation.id, "")
+                      return
+                    }
                     if (event.key === "Tab" && !event.shiftKey) {
                       event.preventDefault()
                       const field = event.currentTarget
