@@ -2981,13 +2981,13 @@ function StarterPrompts({
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-3 py-6">
       <div className="flex flex-col gap-1 text-center">
-        <div className="mx-auto grid size-8 place-items-center rounded-lg bg-muted text-foreground">
+        <div className="mx-auto grid size-9 place-items-center rounded-xl bg-muted text-foreground">
           <Sparkles aria-hidden="true" weight="duotone" />
         </div>
         <h2 className="text-sm font-semibold text-foreground">
           What do you want to build?
         </h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-balance text-xs text-muted-foreground">
           Pick a starter idea or describe your own app to get going.
         </p>
       </div>
@@ -3194,10 +3194,12 @@ function ApiKeyOnboardingModal({
               {sessionError}
             </p>
           ) : null}
+        </div>
+        <div className="border-t border-border/60 bg-muted/15 px-4 py-3">
           <Button
             type="submit"
             disabled={!apiKey.trim() || isCreatingSession}
-            className="h-9 rounded-md"
+            className="h-9 w-full rounded-md"
           >
             {isCreatingSession ? (
               <Loader2 data-icon="inline-start" className="animate-spin" />
