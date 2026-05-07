@@ -3070,7 +3070,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6"
+      className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="shortcuts-help-title"
@@ -3080,7 +3080,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
         }
       }}
     >
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg">
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <h2
