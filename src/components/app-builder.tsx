@@ -1812,6 +1812,21 @@ export function AppBuilder() {
                     )
                   }
                   onKeyDown={(event) => {
+                    if (event.key === "Tab" && !event.shiftKey) {
+                      event.preventDefault()
+                      const field = event.currentTarget
+                      const start = field.selectionStart ?? input.length
+                      const end = field.selectionEnd ?? input.length
+                      const next =
+                        input.slice(0, start) + "  " + input.slice(end)
+                      setConversationInput(activeConversation.id, next)
+                      const caret = start + 2
+                      queueMicrotask(() => {
+                        field.selectionStart = caret
+                        field.selectionEnd = caret
+                      })
+                      return
+                    }
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault()
                       event.currentTarget.form?.requestSubmit()
