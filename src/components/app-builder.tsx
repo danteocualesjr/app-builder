@@ -1747,9 +1747,7 @@ export function AppBuilder() {
                   )}
                 >
                   {message.role === "user" ? (
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.content || "Working..."}
-                    </p>
+                    <UserChatBubble content={message.content} />
                   ) : getMessageDisplayRole(message) === "activity" ? (
                     <ActivityMessage message={message} />
                   ) : message.role === "assistant" && !message.content ? (
@@ -3111,6 +3109,47 @@ function AssistantPending() {
           style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
+    </div>
+  )
+}
+
+function UserChatBubble({ content }: { content: string }) {
+  const { showToast } = useToast()
+  const display = content || "Working..."
+
+  async function copyMessage() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(display)
+      showToast({
+        title: "Message copied",
+        description: "User prompt is on the clipboard.",
+      })
+    } catch {
+      showToast({
+        title: "Could not copy message",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
+    }
+  }
+
+  return (
+    <div className="group/user relative">
+      <p className="whitespace-pre-wrap break-words pr-8">{display}</p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="absolute right-0 top-0 size-7 rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted/80 hover:text-foreground focus-visible:opacity-100 group-hover/user:opacity-100"
+        aria-label="Copy message"
+        title="Copy message"
+        onClick={copyMessage}
+      >
+        <Copy aria-hidden="true" className="size-4" />
+      </Button>
     </div>
   )
 }
