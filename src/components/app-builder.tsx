@@ -3070,6 +3070,12 @@ function ConversationSidebar({
     title: string
   } | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const filteredConversations = useMemo(
+    () => filterConversationsByQuery(conversations, searchQuery),
+    [conversations, searchQuery]
+  )
+  const trimmedSearch = searchQuery.trim()
   const activeRenameConversationId = renameState?.conversationId
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -3206,7 +3212,28 @@ function ConversationSidebar({
               <PanelLeftClose aria-hidden="true" />
             </Button>
           </div>
-          {conversations.map((conversation) => {
+          {conversations.length > 1 ? (
+            <div className="relative mb-1">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search projects"
+                aria-label="Search projects"
+                className="h-8 rounded-md pl-7 text-sm"
+              />
+            </div>
+          ) : null}
+          {filteredConversations.length === 0 && trimmedSearch ? (
+            <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+              No projects match &ldquo;{trimmedSearch}&rdquo;.
+            </p>
+          ) : null}
+          {filteredConversations.map((conversation) => {
             const isActive = conversation.id === activeConversationId
             const isGeneratingName = titleGenerationConversationIds.has(
               conversation.id
@@ -4834,6 +4861,33 @@ function getProjectNameErrorMessage(error: unknown) {
   }
 
   return `Could not generate a project name. ${message}`
+}
+
+function filterConversationsByQuery(
+  conversations: Conversation[],
+  query: string
+): Conversation[] {
+  const trimmed = query.trim().toLowerCase()
+  if (!trimmed) {
+    return conversations
+  }
+
+  return conversations.filter((conversation) => {
+    if (conversation.title.toLowerCase().includes(trimmed)) {
+      return true
+    }
+
+    return conversation.messages.some((message) => {
+      if (
+        message.role !== "user" &&
+        message.role !== "assistant" &&
+        message.role !== "system"
+      ) {
+        return false
+      }
+      return message.content.toLowerCase().includes(trimmed)
+    })
+  })
 }
 
 function getConversationPreview(conversation: Conversation) {
