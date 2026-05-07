@@ -76,6 +76,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useToast } from "@/components/toast"
 import {
   applyTheme,
   isThemePreference,
@@ -337,6 +338,7 @@ export function AppBuilder() {
   const [titleGenerationConversationIds, setTitleGenerationConversationIds] =
     useState(() => new Set<string>())
   const [themePreference, setThemePreference] = useTheme()
+  const { showToast } = useToast()
   const bottomRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
   const conversationsRef = useRef(conversations)
@@ -744,6 +746,7 @@ export function AppBuilder() {
       conversationId
     )
     const sessionId = target?.session?.id
+    const targetTitle = target?.title
 
     const controller = abortControllersRef.current.get(conversationId)
     if (controller) {
@@ -756,6 +759,13 @@ export function AppBuilder() {
         method: "DELETE",
       }).catch(() => {
         // Best-effort server-side cleanup; UI state is already removed.
+      })
+    }
+
+    if (targetTitle) {
+      showToast({
+        title: "Project deleted",
+        description: `Removed “${targetTitle}” and its preview workspace.`,
       })
     }
 
@@ -1073,6 +1083,10 @@ export function AppBuilder() {
     if (didSave) {
       setIsOnboardingOpen(false)
       setApiKeySettingsOpen(false)
+      showToast({
+        title: "Cursor API key saved",
+        description: "The local preview is connected.",
+      })
     }
   }
 
@@ -1088,6 +1102,11 @@ export function AppBuilder() {
       ...current,
       sessionError: null,
     }))
+    showToast({
+      title: "API key cleared",
+      description: "Add a new Cursor key to start a session again.",
+      variant: "info",
+    })
   }
 
   async function confirmClearSavedApiKey() {
@@ -3890,6 +3909,7 @@ function PreviewToolbar({
   onRefreshPreview: () => void
   onToggleLogs: () => void
 }) {
+  const { showToast } = useToast()
   const [isCopied, setIsCopied] = useState(false)
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -3912,8 +3932,16 @@ function PreviewToolbar({
         clearTimeout(copyResetRef.current)
       }
       copyResetRef.current = setTimeout(() => setIsCopied(false), 1_500)
+      showToast({
+        title: "Preview URL copied",
+        description: previewUrl,
+      })
     } catch {
-      // Clipboard access may be blocked; the visible URL is still selectable.
+      showToast({
+        title: "Could not copy preview URL",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
     }
   }
 
@@ -4038,6 +4066,7 @@ function LogsPanel({
   sessionId: string
   onClose: () => void
 }) {
+  const { showToast } = useToast()
   const [entries, setEntries] = useState<LogEntryView[]>([])
   const [status, setStatus] = useState<
     "connecting" | "live" | "error"
@@ -4197,8 +4226,18 @@ function LogsPanel({
         clearTimeout(copyResetRef.current)
       }
       copyResetRef.current = setTimeout(() => setIsCopied(false), 1_500)
+      showToast({
+        title: "Logs copied",
+        description: `${visibleEntries.length} ${
+          visibleEntries.length === 1 ? "line" : "lines"
+        } on the clipboard.`,
+      })
     } catch {
-      // Clipboard access may be blocked in some contexts; ignore silently.
+      showToast({
+        title: "Could not copy logs",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
     }
   }
 
@@ -4214,12 +4253,17 @@ function LogsPanel({
       .toISOString()
       .replace(/[:.]/g, "-")
       .replace(/Z$/, "")
+    const filename = `app-builder-logs-${stamp}.txt`
     link.href = url
-    link.download = `app-builder-logs-${stamp}.txt`
+    link.download = filename
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+    showToast({
+      title: "Logs downloaded",
+      description: filename,
+    })
   }
 
   const trimmedSearch = searchQuery.trim()
