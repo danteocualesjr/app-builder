@@ -10,9 +10,13 @@ import {
   useState,
 } from "react"
 import {
+  ArrowClockwiseIcon as ArrowClockwise,
   ArrowRightIcon as ArrowRight,
+  ArrowSquareOutIcon as ArrowSquareOut,
   BrainIcon as Brain,
   CaretDownIcon as CaretDown,
+  CheckIcon as Check,
+  CopyIcon as Copy,
   CubeIcon as Cube,
   DesktopIcon as Desktop,
   FileTextIcon as FileText,
@@ -249,6 +253,7 @@ export function AppBuilder() {
   })
   const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
   const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
+  const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(
     () => !isCursorApiKey(getSavedCursorApiKey() ?? "")
   )
@@ -1622,11 +1627,15 @@ export function AppBuilder() {
             <PreviewToolbar
               previewUrl={session.previewUrl}
               isLogsOpen={isLogsPanelOpen}
+              onRefreshPreview={() =>
+                setPreviewRefreshCounter((current) => current + 1)
+              }
               onToggleLogs={() =>
                 setIsLogsPanelOpen((current) => !current)
               }
             />
             <iframe
+              key={`${session.id}:${previewRefreshCounter}`}
               title="Generated app preview"
               src={session.previewUrl}
               className="min-h-0 flex-1 border-0 bg-white"
@@ -3486,29 +3495,109 @@ function CollapsedProjectSidebar({
 function PreviewToolbar({
   previewUrl,
   isLogsOpen,
+  onRefreshPreview,
   onToggleLogs,
 }: {
   previewUrl: string
   isLogsOpen: boolean
+  onRefreshPreview: () => void
   onToggleLogs: () => void
 }) {
+  const [isCopied, setIsCopied] = useState(false)
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current) {
+        clearTimeout(copyResetRef.current)
+      }
+    }
+  }, [])
+
+  async function copyPreviewUrl() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(previewUrl)
+      setIsCopied(true)
+      if (copyResetRef.current) {
+        clearTimeout(copyResetRef.current)
+      }
+      copyResetRef.current = setTimeout(() => setIsCopied(false), 1_500)
+    } catch {
+      // Clipboard access may be blocked; the visible URL is still selectable.
+    }
+  }
+
   return (
     <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b bg-muted/30 px-3 text-xs text-muted-foreground">
-      <span className="truncate font-mono" title={previewUrl}>
-        {previewUrl}
-      </span>
-      <Button
-        type="button"
-        variant={isLogsOpen ? "secondary" : "ghost"}
-        size="icon-sm"
-        className="size-7 rounded-md"
-        aria-label={isLogsOpen ? "Hide logs" : "Show logs"}
-        aria-pressed={isLogsOpen}
-        title={isLogsOpen ? "Hide logs" : "Show logs"}
-        onClick={onToggleLogs}
+      <a
+        href={previewUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="min-w-0 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
+        title={`Open ${previewUrl} in a new tab`}
       >
-        <Terminal aria-hidden="true" className="size-4" />
-      </Button>
+        {previewUrl}
+      </a>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="size-7 rounded-md"
+          aria-label="Refresh preview"
+          title="Refresh preview"
+          onClick={onRefreshPreview}
+        >
+          <ArrowClockwise aria-hidden="true" className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="size-7 rounded-md"
+          aria-label={isCopied ? "Preview URL copied" : "Copy preview URL"}
+          title={isCopied ? "Copied!" : "Copy preview URL"}
+          onClick={copyPreviewUrl}
+        >
+          {isCopied ? (
+            <Check
+              aria-hidden="true"
+              className="size-4 text-emerald-500"
+              weight="bold"
+            />
+          ) : (
+            <Copy aria-hidden="true" className="size-4" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          nativeButton={false}
+          className="size-7 rounded-md"
+          aria-label="Open preview in new tab"
+          title="Open preview in new tab"
+          render={
+            <a href={previewUrl} target="_blank" rel="noreferrer" />
+          }
+        >
+          <ArrowSquareOut aria-hidden="true" className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant={isLogsOpen ? "secondary" : "ghost"}
+          size="icon-sm"
+          className="size-7 rounded-md"
+          aria-label={isLogsOpen ? "Hide logs" : "Show logs"}
+          aria-pressed={isLogsOpen}
+          title={isLogsOpen ? "Hide logs" : "Show logs"}
+          onClick={onToggleLogs}
+        >
+          <Terminal aria-hidden="true" className="size-4" />
+        </Button>
+      </div>
     </div>
   )
 }
