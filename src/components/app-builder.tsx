@@ -1695,7 +1695,7 @@ export function AppBuilder() {
               ))}
 
               {!session && hasSavedApiKey && sessionError ? (
-                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
+                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 ring-1 ring-destructive/20">
                   <p className="text-sm text-destructive">{sessionError}</p>
                   <div className="flex gap-2">
                     <Button
@@ -4438,9 +4438,9 @@ function ProjectChatHeader({
   updatedAt: number
 }) {
   return (
-    <div className="flex min-h-10 items-center justify-between gap-2 border-b px-3 py-1.5">
+    <div className="flex min-h-10 items-center justify-between gap-2 border-b bg-muted/30 px-3 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">
+        <p className="truncate text-sm font-semibold tracking-tight text-foreground">
           {title}
         </p>
         <p className="truncate text-xs text-muted-foreground">
