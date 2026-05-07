@@ -273,6 +273,19 @@ function readStoredLogsPanelOpen(): boolean {
   return window.localStorage.getItem(LOGS_PANEL_OPEN_STORAGE_KEY) === "1"
 }
 
+const PROJECT_SIDEBAR_OPEN_STORAGE_KEY = "app-builder.project-sidebar-open"
+
+function readStoredProjectSidebarOpen(): boolean {
+  if (typeof window === "undefined") {
+    return true
+  }
+  const raw = window.localStorage.getItem(PROJECT_SIDEBAR_OPEN_STORAGE_KEY)
+  if (raw === null) {
+    return true
+  }
+  return raw === "1"
+}
+
 const STARTER_PROMPTS: ReadonlyArray<{
   title: string
   prompt: string
@@ -345,7 +358,9 @@ export function AppBuilder() {
       [initialAppState.activeConversationId]: createRuntimeState(),
     }
   })
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
+  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(
+    readStoredProjectSidebarOpen
+  )
   const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(readStoredLogsPanelOpen)
   const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
   const [previewDeviceSize, setPreviewDeviceSize] =
@@ -416,6 +431,16 @@ export function AppBuilder() {
       isLogsPanelOpen ? "1" : "0"
     )
   }, [isLogsPanelOpen])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(
+      PROJECT_SIDEBAR_OPEN_STORAGE_KEY,
+      isProjectSidebarOpen ? "1" : "0"
+    )
+  }, [isProjectSidebarOpen])
 
   useEffect(() => {
     let cancelled = false
