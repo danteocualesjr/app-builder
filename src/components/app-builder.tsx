@@ -4437,7 +4437,7 @@ function ProjectChatHeader({
   updatedAt: number
 }) {
   return (
-    <div className="flex min-h-10 items-center justify-between gap-2 border-b px-3 py-1.5">
+    <div className="flex min-h-10 items-center justify-between gap-2 border-b bg-muted/30 px-3 py-1.5">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">
           {title}
