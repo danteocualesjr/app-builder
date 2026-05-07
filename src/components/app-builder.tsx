@@ -264,6 +264,15 @@ function readStoredPreviewDeviceSize(): PreviewDeviceSize {
   return "desktop"
 }
 
+const LOGS_PANEL_OPEN_STORAGE_KEY = "app-builder.logs-panel-open"
+
+function readStoredLogsPanelOpen(): boolean {
+  if (typeof window === "undefined") {
+    return false
+  }
+  return window.localStorage.getItem(LOGS_PANEL_OPEN_STORAGE_KEY) === "1"
+}
+
 const STARTER_PROMPTS: ReadonlyArray<{
   title: string
   prompt: string
@@ -337,7 +346,7 @@ export function AppBuilder() {
     }
   })
   const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
-  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
+  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(readStoredLogsPanelOpen)
   const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
   const [previewDeviceSize, setPreviewDeviceSize] =
     useState<PreviewDeviceSize>(readStoredPreviewDeviceSize)
@@ -397,6 +406,16 @@ export function AppBuilder() {
     }
     window.localStorage.setItem(PREVIEW_DEVICE_STORAGE_KEY, previewDeviceSize)
   }, [previewDeviceSize])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(
+      LOGS_PANEL_OPEN_STORAGE_KEY,
+      isLogsPanelOpen ? "1" : "0"
+    )
+  }, [isLogsPanelOpen])
 
   useEffect(() => {
     let cancelled = false
