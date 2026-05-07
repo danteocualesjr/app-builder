@@ -27,6 +27,7 @@ import {
   GearIcon as Settings,
   HammerIcon as Hammer,
   InfoIcon as Info,
+  KeyboardIcon as Keyboard,
   ListChecksIcon as ListTodo,
   MagnifyingGlassIcon as Search,
   MonitorIcon as Monitor,
@@ -332,6 +333,7 @@ export function AppBuilder() {
   )
   const [isApiKeySettingsOpen, setIsApiKeySettingsOpen] = useState(false)
   const [isApiKeyClearConfirming, setIsApiKeyClearConfirming] = useState(false)
+  const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false)
   const [titleGenerationConversationIds, setTitleGenerationConversationIds] =
     useState(() => new Set<string>())
   const [themePreference, setThemePreference] = useTheme()
@@ -514,6 +516,77 @@ export function AppBuilder() {
       })),
     })
   }, [activeConversationId, conversations])
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const isMod = event.metaKey || event.ctrlKey
+      if (!isMod) {
+        return
+      }
+
+      const target = event.target
+      const isInTextField =
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+
+      const key = event.key.toLowerCase()
+
+      if (key === "/") {
+        event.preventDefault()
+        setIsShortcutsHelpOpen((current) => !current)
+        return
+      }
+
+      if (key === "k" && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        chatInputRef.current?.focus()
+        return
+      }
+
+      if (isInTextField) {
+        return
+      }
+
+      if (key === "b" && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        setIsProjectSidebarOpen((current) => !current)
+        return
+      }
+
+      if (!event.shiftKey) {
+        return
+      }
+
+      if (key === "o") {
+        event.preventDefault()
+        if (hasSavedApiKey) {
+          createConversation()
+        } else {
+          openOnboarding()
+        }
+        return
+      }
+
+      if (key === "l") {
+        event.preventDefault()
+        setIsLogsPanelOpen((current) => !current)
+        return
+      }
+
+      if (key === "r") {
+        event.preventDefault()
+        setPreviewRefreshCounter((current) => current + 1)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+    // hasSavedApiKey/createConversation/openOnboarding are read via closures
+    // and intentionally tracked through the dependency that affects them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSavedApiKey])
 
   useEffect(() => {
     for (const conversation of conversations) {
@@ -1516,6 +1589,7 @@ export function AppBuilder() {
           }}
           onRenameConversation={renameConversation}
           onRequireApiKey={openOnboarding}
+          onShowKeyboardShortcuts={() => setIsShortcutsHelpOpen(true)}
           onSubmitApiKey={submitApiKeySettings}
           onThemePreferenceChange={setThemePreference}
         />
@@ -1745,6 +1819,11 @@ export function AppBuilder() {
           sessionError={sessionError}
           onApiKeyChange={setApiKey}
           onSubmit={submitApiKey}
+        />
+      ) : null}
+      {isShortcutsHelpOpen ? (
+        <KeyboardShortcutsHelpDialog
+          onClose={() => setIsShortcutsHelpOpen(false)}
         />
       ) : null}
     </main>
@@ -2931,6 +3010,107 @@ function AssistantPending() {
   )
 }
 
+type KeyboardShortcut = {
+  keys: string[]
+  description: string
+}
+
+const KEYBOARD_SHORTCUTS: ReadonlyArray<KeyboardShortcut> = [
+  { keys: ["mod", "k"], description: "Focus the chat input" },
+  { keys: ["mod", "/"], description: "Show keyboard shortcuts" },
+  { keys: ["mod", "b"], description: "Toggle the projects sidebar" },
+  { keys: ["mod", "shift", "o"], description: "Start a new project" },
+  { keys: ["mod", "shift", "r"], description: "Refresh the preview" },
+  { keys: ["mod", "shift", "l"], description: "Toggle the logs panel" },
+]
+
+function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
+
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
+  const modLabel = isMac ? "⌘" : "Ctrl"
+  const shiftLabel = isMac ? "⇧" : "Shift"
+
+  function renderKey(key: string): string {
+    if (key === "mod") return modLabel
+    if (key === "shift") return shiftLabel
+    if (key === "alt") return isMac ? "⌥" : "Alt"
+    return key.length === 1 ? key.toUpperCase() : key
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shortcuts-help-title"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div>
+            <h2
+              id="shortcuts-help-title"
+              className="text-base font-semibold tracking-tight"
+            >
+              Keyboard shortcuts
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Press {modLabel}+/ to toggle this panel.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="rounded-md text-muted-foreground"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        </div>
+        <ul className="flex flex-col gap-1 p-2 text-sm">
+          {KEYBOARD_SHORTCUTS.map((shortcut) => (
+            <li
+              key={shortcut.keys.join("+")}
+              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5"
+            >
+              <span className="text-foreground">{shortcut.description}</span>
+              <span className="flex shrink-0 items-center gap-1">
+                {shortcut.keys.map((key, index) => (
+                  <span key={index} className="flex items-center gap-1">
+                    {index > 0 ? (
+                      <span className="text-xs text-muted-foreground">+</span>
+                    ) : null}
+                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground">
+                      {renderKey(key)}
+                    </kbd>
+                  </span>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 function ApiKeyOnboardingModal({
   apiKey,
   isCreatingSession,
@@ -3035,6 +3215,7 @@ function ConversationSidebar({
   onRenameConversation,
   onRequireApiKey,
   onSelectConversation,
+  onShowKeyboardShortcuts,
   onSubmitApiKey,
   onThemePreferenceChange,
 }: {
@@ -3059,6 +3240,7 @@ function ConversationSidebar({
   onRenameConversation: (conversationId: string, title: string) => void
   onRequireApiKey: () => void
   onSelectConversation: (conversationId: string) => void
+  onShowKeyboardShortcuts: () => void
   onSubmitApiKey: (event: FormEvent<HTMLFormElement>) => void
   onThemePreferenceChange: (preference: ThemePreference) => void
 }) {
@@ -3422,6 +3604,17 @@ function ConversationSidebar({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-md text-muted-foreground"
+            aria-label="Show keyboard shortcuts"
+            title="Keyboard shortcuts"
+            onClick={onShowKeyboardShortcuts}
+          >
+            <Keyboard aria-hidden="true" />
+          </Button>
           <ThemeToggle
             preference={themePreference}
             onPreferenceChange={onThemePreferenceChange}
