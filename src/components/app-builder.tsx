@@ -3950,15 +3950,23 @@ function PreviewToolbar({
 
   return (
     <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b bg-muted/30 px-3 text-xs text-muted-foreground">
-      <a
-        href={previewUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="min-w-0 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
-        title={`Open ${previewUrl} in a new tab`}
-      >
-        {previewUrl}
-      </a>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span
+          className="hidden shrink-0 select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/75 sm:inline"
+          title="Local preview address"
+        >
+          Preview
+        </span>
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="min-w-0 flex-1 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
+          title={`Open ${previewUrl} in a new tab`}
+        >
+          {previewUrl}
+        </a>
+      </div>
       <div className="flex shrink-0 items-center gap-1">
         <ToggleGroup
           value={[previewDeviceSize]}
