@@ -3850,8 +3850,20 @@ function LogsPanel({
     "connecting" | "live" | "error"
   >("connecting")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sourceFilter, setSourceFilter] = useState<string>("all")
+  const [isCopied, setIsCopied] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isPinnedToBottomRef = useRef(true)
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current) {
+        clearTimeout(copyResetRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const source = new EventSource(
@@ -3914,6 +3926,38 @@ function LogsPanel({
     }
   }, [sessionId])
 
+  const sources = useMemo(() => {
+    const unique = new Set<string>()
+    for (const entry of entries) {
+      unique.add(entry.source)
+    }
+    return Array.from(unique).sort()
+  }, [entries])
+
+  const effectiveSourceFilter =
+    sourceFilter === "all" || sources.includes(sourceFilter)
+      ? sourceFilter
+      : "all"
+
+  const visibleEntries = useMemo(() => {
+    const trimmedQuery = searchQuery.trim().toLowerCase()
+    return entries.filter((entry) => {
+      if (
+        effectiveSourceFilter !== "all" &&
+        entry.source !== effectiveSourceFilter
+      ) {
+        return false
+      }
+      if (!trimmedQuery) {
+        return true
+      }
+      return (
+        entry.line.toLowerCase().includes(trimmedQuery) ||
+        entry.source.toLowerCase().includes(trimmedQuery)
+      )
+    })
+  }, [entries, searchQuery, effectiveSourceFilter])
+
   useEffect(() => {
     if (!isPinnedToBottomRef.current) {
       return
@@ -3923,7 +3967,7 @@ function LogsPanel({
       return
     }
     node.scrollTop = node.scrollHeight
-  }, [entries])
+  }, [visibleEntries])
 
   function handleScroll(event: ReactUIEvent<HTMLDivElement>) {
     const node = event.currentTarget
@@ -3937,6 +3981,57 @@ function LogsPanel({
     isPinnedToBottomRef.current = true
   }
 
+  function formatEntriesAsText(items: LogEntryView[]) {
+    return items
+      .map(
+        (entry) =>
+          `${formatLogTimestamp(entry.timestamp)} [${entry.source}] ${entry.line}`
+      )
+      .join("\n")
+  }
+
+  async function copyVisibleEntries() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return
+    }
+    if (visibleEntries.length === 0) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(formatEntriesAsText(visibleEntries))
+      setIsCopied(true)
+      if (copyResetRef.current) {
+        clearTimeout(copyResetRef.current)
+      }
+      copyResetRef.current = setTimeout(() => setIsCopied(false), 1_500)
+    } catch {
+      // Clipboard access may be blocked in some contexts; ignore silently.
+    }
+  }
+
+  function downloadVisibleEntries() {
+    if (typeof window === "undefined" || visibleEntries.length === 0) {
+      return
+    }
+    const text = formatEntriesAsText(visibleEntries)
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    const stamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .replace(/Z$/, "")
+    link.href = url
+    link.download = `app-builder-logs-${stamp}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const trimmedSearch = searchQuery.trim()
+  const isFiltering = Boolean(trimmedSearch) || effectiveSourceFilter !== "all"
+
   return (
     <div className="flex h-64 shrink-0 flex-col border-t bg-zinc-950 text-zinc-100">
       <div className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-zinc-800 px-3 text-xs">
@@ -3944,8 +4039,31 @@ function LogsPanel({
           <Terminal aria-hidden="true" className="size-3.5 text-zinc-400" />
           <span className="font-medium text-zinc-200">Logs</span>
           <LogsStatusBadge status={status} />
+          {isFiltering ? (
+            <span className="text-[10px] text-zinc-500">
+              {visibleEntries.length}/{entries.length}
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={copyVisibleEntries}
+            disabled={visibleEntries.length === 0}
+            className="rounded-sm px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            title={isCopied ? "Copied!" : "Copy visible logs"}
+          >
+            {isCopied ? "Copied" : "Copy"}
+          </button>
+          <button
+            type="button"
+            onClick={downloadVisibleEntries}
+            disabled={visibleEntries.length === 0}
+            className="rounded-sm px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            title="Download visible logs as a text file"
+          >
+            Download
+          </button>
           <button
             type="button"
             onClick={clearLogs}
@@ -3965,6 +4083,35 @@ function LogsPanel({
           </button>
         </div>
       </div>
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-zinc-800 px-3">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500"
+          />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Filter logs"
+            aria-label="Filter logs"
+            className="h-6 w-full rounded-sm border border-zinc-800 bg-zinc-900 pl-6 pr-2 text-[11px] text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none"
+          />
+        </div>
+        <select
+          value={effectiveSourceFilter}
+          onChange={(event) => setSourceFilter(event.target.value)}
+          aria-label="Filter logs by source"
+          className="h-6 max-w-32 rounded-sm border border-zinc-800 bg-zinc-900 px-1.5 text-[11px] text-zinc-200 focus:border-zinc-600 focus:outline-none"
+        >
+          <option value="all">All sources</option>
+          {sources.map((source) => (
+            <option key={source} value={source}>
+              {source}
+            </option>
+          ))}
+        </select>
+      </div>
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -3977,10 +4124,15 @@ function LogsPanel({
               : "Waiting for output..."}
           </p>
         ) : null}
+        {entries.length > 0 && visibleEntries.length === 0 ? (
+          <p className="text-zinc-500">
+            No log lines match the current filters.
+          </p>
+        ) : null}
         {errorMessage && status === "error" ? (
           <p className="text-rose-300">{errorMessage}</p>
         ) : null}
-        {entries.map((entry) => (
+        {visibleEntries.map((entry) => (
           <div key={entry.id} className="whitespace-pre-wrap break-words">
             <span className="mr-2 text-zinc-500">
               {formatLogTimestamp(entry.timestamp)}
