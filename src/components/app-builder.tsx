@@ -3018,13 +3018,13 @@ function StarterPrompts({
 function AssistantPending() {
   return (
     <div
-      className="flex items-center gap-1 py-1 text-muted-foreground"
+      className="flex items-center gap-1.5 py-1.5 text-muted-foreground"
       aria-label="Assistant is thinking"
     >
       {[0, 1, 2].map((index) => (
         <span
           key={index}
-          className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+          className="size-2 animate-bounce rounded-full bg-muted-foreground/55"
           style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
