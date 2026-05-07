@@ -3080,8 +3080,8 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
         }
       }}
     >
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex max-h-[min(520px,88vh)] w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <div>
             <h2
               id="shortcuts-help-title"
@@ -3103,11 +3103,11 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             Close
           </Button>
         </div>
-        <ul className="flex flex-col gap-1 p-2 text-sm">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-2 text-sm">
           {KEYBOARD_SHORTCUTS.map((shortcut) => (
             <li
               key={shortcut.keys.join("+")}
-              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5"
+              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/55"
             >
               <span className="text-foreground">{shortcut.description}</span>
               <span className="flex shrink-0 items-center gap-1">
@@ -3116,7 +3116,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
                     {index > 0 ? (
                       <span className="text-xs text-muted-foreground">+</span>
                     ) : null}
-                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground">
+                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border border-border/80 bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground shadow-sm">
                       {renderKey(key)}
                     </kbd>
                   </span>
