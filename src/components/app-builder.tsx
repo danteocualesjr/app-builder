@@ -4547,6 +4547,44 @@ function formatLogTimestamp(value: number) {
   return `${hours}:${minutes}:${seconds}`
 }
 
+function downloadConversationTranscript(conversation: Conversation): string {
+  if (typeof window === "undefined") {
+    return ""
+  }
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    title: conversation.title,
+    conversationId: conversation.id,
+    model: conversation.model,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    messages: conversation.messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  const slug = conversation.title
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
+  const filename = `app-builder-${slug || "chat"}-${stamp}.json`
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
 function ProjectChatHeader({
   conversation,
   session,
@@ -4558,6 +4596,8 @@ function ProjectChatHeader({
   title: string
   updatedAt: number
 }) {
+  const { showToast } = useToast()
+
   return (
     <div className="flex min-h-10 items-center justify-between gap-2 border-b px-3 py-1.5">
       <div className="min-w-0">
@@ -4603,6 +4643,24 @@ function ProjectChatHeader({
               value={formatMetadataTimestamp(conversation.updatedAt)}
             />
           </dl>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 w-full rounded-md"
+            onClick={() => {
+              const filename = downloadConversationTranscript(conversation)
+              if (filename) {
+                showToast({
+                  title: "Chat exported",
+                  description: `Saved as ${filename}`,
+                })
+              }
+            }}
+          >
+            <FileText data-icon="inline-start" className="size-4" />
+            Export transcript
+          </Button>
         </PopoverContent>
       </Popover>
     </div>
