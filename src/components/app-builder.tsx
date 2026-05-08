@@ -4586,11 +4586,18 @@ function LogsPanel({
           className="h-full min-h-0 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
         >
         {entries.length === 0 && status !== "error" ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <Terminal
-              aria-hidden="true"
-              className="size-9 text-zinc-600 opacity-50"
-            />
+          <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+            {status === "connecting" ? (
+              <Loader2
+                aria-hidden="true"
+                className="size-8 animate-spin text-zinc-400"
+              />
+            ) : (
+              <Terminal
+                aria-hidden="true"
+                className="size-9 text-zinc-600 opacity-50"
+              />
+            )}
             <p className="max-w-xs text-xs leading-relaxed text-zinc-500">
               {status === "connecting"
                 ? "Connecting to the session log stream…"
