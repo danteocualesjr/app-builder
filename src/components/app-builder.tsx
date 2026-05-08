@@ -1765,7 +1765,7 @@ export function AppBuilder() {
                   className="max-h-40 min-h-16 resize-none border-0 bg-transparent px-1 py-0 text-base shadow-none focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent"
                 />
                 <div className="flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <ModelConfigPopover
                       models={availableModels}
                       selectedModel={selectedModel}
@@ -1773,6 +1773,9 @@ export function AppBuilder() {
                       onModelChange={selectModel}
                       onParameterChange={selectModelParameter}
                     />
+                    <span className="hidden min-w-0 truncate sm:inline text-[11px] text-muted-foreground/80">
+                      Enter to send · Shift+Enter for newline
+                    </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isRunning ? (
