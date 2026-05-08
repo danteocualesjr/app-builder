@@ -3046,6 +3046,12 @@ const KEYBOARD_SHORTCUTS: ReadonlyArray<KeyboardShortcut> = [
 ]
 
 function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [])
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -3096,6 +3102,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             </p>
           </div>
           <Button
+            ref={closeButtonRef}
             type="button"
             variant="ghost"
             size="sm"
