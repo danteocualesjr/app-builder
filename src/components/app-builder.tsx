@@ -44,6 +44,7 @@ import {
   TerminalWindowIcon as Terminal,
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
+  WarningCircleIcon as WarningCircle,
   WrenchIcon as Wrench,
   XIcon as XMark,
 } from "@phosphor-icons/react"
@@ -1704,8 +1705,17 @@ export function AppBuilder() {
               ))}
 
               {!session && hasSavedApiKey && sessionError ? (
-                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
-                  <p className="text-sm text-destructive">{sessionError}</p>
+                <div className="flex flex-col gap-3 rounded-lg border border-destructive/25 bg-card p-3">
+                  <div className="flex gap-2.5">
+                    <WarningCircle
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0 text-destructive"
+                      weight="fill"
+                    />
+                    <p className="text-sm leading-snug text-destructive">
+                      {sessionError}
+                    </p>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       type="button"
