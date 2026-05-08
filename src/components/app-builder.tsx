@@ -1645,9 +1645,15 @@ export function AppBuilder() {
               )}
             >
               {showProjectSetup ? (
-                <p className="text-sm font-medium text-muted-foreground">
-                  Setting up project ...
-                </p>
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <Loader2
+                    aria-hidden="true"
+                    className="size-5 animate-spin text-muted-foreground"
+                  />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Setting up project…
+                  </p>
+                </div>
               ) : isCursorTyping ? (
                 <div className="mr-8 flex w-fit items-center gap-2 rounded-md bg-muted/70 px-2.5 py-1.5 text-sm text-muted-foreground">
                   <Loader2 aria-hidden="true" className="animate-spin" />
