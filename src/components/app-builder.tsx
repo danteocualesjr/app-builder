@@ -3909,6 +3909,14 @@ function PreviewFrame({
   )
 }
 
+function formatPreviewUrlForToolbar(url: string, maxLength = 52) {
+  if (url.length <= maxLength) {
+    return url
+  }
+  const keep = Math.max(8, Math.floor((maxLength - 1) / 2))
+  return `${url.slice(0, keep)}…${url.slice(-keep)}`
+}
+
 function PreviewToolbar({
   previewUrl,
   isLogsOpen,
@@ -3967,9 +3975,9 @@ function PreviewToolbar({
         target="_blank"
         rel="noreferrer"
         className="min-w-0 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
-        title={`Open ${previewUrl} in a new tab`}
+        title={previewUrl}
       >
-        {previewUrl}
+        {formatPreviewUrlForToolbar(previewUrl)}
       </a>
       <div className="flex shrink-0 items-center gap-1">
         <ToggleGroup
