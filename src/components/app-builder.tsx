@@ -4487,8 +4487,11 @@ function ProjectChatHeader({
   return (
     <div className="flex min-h-10 items-center justify-between gap-2 border-b px-3 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">
-          {title}
+        <p className="flex min-w-0 items-center gap-2 truncate text-sm font-semibold text-foreground">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+            <Cube aria-hidden="true" className="size-3.5" weight="duotone" />
+          </span>
+          <span className="truncate">{title}</span>
         </p>
         <p className="truncate text-xs text-muted-foreground">
           {formatHeaderUpdatedAt(updatedAt)}
