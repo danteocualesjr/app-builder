@@ -44,7 +44,9 @@ import {
   TerminalWindowIcon as Terminal,
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
+  WarningCircleIcon as WarningCircle,
   WrenchIcon as Wrench,
+  XIcon as XMark,
 } from "@phosphor-icons/react"
 import ReactMarkdown from "react-markdown"
 
@@ -1573,8 +1575,10 @@ export function AppBuilder() {
 
   return (
     <main
+      id="app-main"
+      tabIndex={-1}
       className={cn(
-        "flex h-screen gap-0 bg-background p-0",
+        "flex h-screen gap-0 bg-background p-0 outline-none",
         session ? "" : "items-stretch"
       )}
     >
@@ -1643,9 +1647,15 @@ export function AppBuilder() {
               )}
             >
               {showProjectSetup ? (
-                <p className="text-sm font-medium text-muted-foreground">
-                  Setting up project ...
-                </p>
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <Loader2
+                    aria-hidden="true"
+                    className="size-5 animate-spin text-muted-foreground"
+                  />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Setting up project…
+                  </p>
+                </div>
               ) : isCursorTyping ? (
                 <div className="mr-8 flex w-fit items-center gap-2 rounded-md bg-muted/70 px-2.5 py-1.5 text-sm text-muted-foreground">
                   <Loader2 aria-hidden="true" className="animate-spin" />
@@ -1757,7 +1767,7 @@ export function AppBuilder() {
                   className="max-h-40 min-h-16 resize-none border-0 bg-transparent px-1 py-0 text-base shadow-none focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent"
                 />
                 <div className="flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <ModelConfigPopover
                       models={availableModels}
                       selectedModel={selectedModel}
@@ -1765,6 +1775,9 @@ export function AppBuilder() {
                       onModelChange={selectModel}
                       onParameterChange={selectModelParameter}
                     />
+                    <span className="hidden min-w-0 truncate sm:inline text-[11px] text-muted-foreground/80">
+                      Enter to send · Shift+Enter for newline
+                    </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isRunning ? (
@@ -3021,7 +3034,7 @@ function AssistantPending() {
       {[0, 1, 2].map((index) => (
         <span
           key={index}
-          className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+          className="size-1.5 rounded-full bg-muted-foreground/60 motion-safe:animate-bounce"
           style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
@@ -3044,6 +3057,12 @@ const KEYBOARD_SHORTCUTS: ReadonlyArray<KeyboardShortcut> = [
 ]
 
 function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [])
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -3094,6 +3113,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             </p>
           </div>
           <Button
+            ref={closeButtonRef}
             type="button"
             variant="ghost"
             size="sm"
@@ -3168,6 +3188,10 @@ function ApiKeyOnboardingModal({
           <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
             Add your Cursor API key to start a local preview workspace. You can
             update or clear it later from settings.
+          </p>
+          <p className="mt-2 text-[11px] leading-4 text-muted-foreground/90">
+            Your key is stored only in this browser&apos;s local storage and is
+            never sent except to connect your sessions.
           </p>
         </div>
 
@@ -3427,8 +3451,18 @@ function ConversationSidebar({
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search projects"
                 aria-label="Search projects"
-                className="h-8 rounded-md pl-7 text-sm"
+                className="h-8 rounded-md pl-7 pr-8 text-sm"
               />
+              {trimmedSearch ? (
+                <button
+                  type="button"
+                  aria-label="Clear project search"
+                  className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <XMark aria-hidden="true" className="size-3.5" />
+                </button>
+              ) : null}
             </div>
           ) : null}
           {filteredConversations.length === 0 && trimmedSearch ? (
@@ -3775,7 +3809,7 @@ function ThemeToggle({
       title={`Theme: ${label}`}
       onClick={() => onPreferenceChange(next)}
     >
-      <Icon aria-hidden="true" />
+      <Icon aria-hidden="true" className="transition-transform duration-200" />
     </Button>
   )
 }
@@ -3885,7 +3919,7 @@ function PreviewFrame({
   return (
     <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-muted/20 p-6">
       <div
-        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg"
+        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg transition-shadow duration-300 hover:shadow-xl"
         style={{ width, maxWidth: "100%" }}
       >
         <iframe
@@ -3896,6 +3930,14 @@ function PreviewFrame({
       </div>
     </div>
   )
+}
+
+function formatPreviewUrlForToolbar(url: string, maxLength = 52) {
+  if (url.length <= maxLength) {
+    return url
+  }
+  const keep = Math.max(8, Math.floor((maxLength - 1) / 2))
+  return `${url.slice(0, keep)}…${url.slice(-keep)}`
 }
 
 function PreviewToolbar({
@@ -3956,9 +3998,9 @@ function PreviewToolbar({
         target="_blank"
         rel="noreferrer"
         className="min-w-0 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
-        title={`Open ${previewUrl} in a new tab`}
+        title={previewUrl}
       >
-        {previewUrl}
+        {formatPreviewUrlForToolbar(previewUrl)}
       </a>
       <div className="flex shrink-0 items-center gap-1">
         <ToggleGroup
@@ -4000,12 +4042,15 @@ function PreviewToolbar({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7 rounded-md"
+          className="size-7 rounded-md active:motion-safe:[&_svg]:rotate-180"
           aria-label="Refresh preview"
           title="Refresh preview"
           onClick={onRefreshPreview}
         >
-          <ArrowClockwise aria-hidden="true" className="size-4" />
+          <ArrowClockwise
+            aria-hidden="true"
+            className="size-4 transition-transform duration-500 ease-out"
+          />
         </Button>
         <Button
           type="button"
@@ -4359,11 +4404,17 @@ function LogsPanel({
         className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
       >
         {entries.length === 0 && status !== "error" ? (
-          <p className="text-zinc-500">
-            {status === "connecting"
-              ? "Connecting to session log stream..."
-              : "Waiting for output..."}
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <Terminal
+              aria-hidden="true"
+              className="size-9 text-zinc-600 opacity-50"
+            />
+            <p className="max-w-xs text-xs leading-relaxed text-zinc-500">
+              {status === "connecting"
+                ? "Connecting to the session log stream…"
+                : "Waiting for output from your preview workspace…"}
+            </p>
+          </div>
         ) : null}
         {entries.length > 0 && visibleEntries.length === 0 ? (
           <p className="text-zinc-500">
