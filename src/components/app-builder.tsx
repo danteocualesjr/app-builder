@@ -3801,12 +3801,12 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="rounded-md text-muted-foreground"
+      className="rounded-md text-muted-foreground transition-colors duration-200"
       aria-label={`Theme: ${label}. Switch to ${getThemePresentation(next).label}.`}
       title={`Theme: ${label}`}
       onClick={() => onPreferenceChange(next)}
     >
-      <Icon aria-hidden="true" />
+      <Icon aria-hidden="true" className="transition-transform duration-200" />
     </Button>
   )
 }
