@@ -3023,7 +3023,7 @@ function AssistantPending() {
       {[0, 1, 2].map((index) => (
         <span
           key={index}
-          className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+          className="size-1.5 rounded-full bg-muted-foreground/60 motion-safe:animate-bounce"
           style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
