@@ -4158,10 +4158,11 @@ function PreviewToolbar({
           href={previewUrl}
           target="_blank"
           rel="noreferrer"
+          aria-label={`Open preview in a new tab: ${previewUrl}`}
           className="min-w-0 flex-1 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
           title={`Open ${previewUrl} in a new tab`}
         >
-          {previewUrl}
+          {formatPreviewUrlForToolbar(previewUrl)}
         </a>
       </div>
       <div className="flex shrink-0 items-center gap-1">
