@@ -3857,7 +3857,7 @@ function CollapsedProjectSidebar({
   onShowSidebar: () => void
 }) {
   return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2">
+    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r border-border/70 bg-muted/30 py-2 shadow-inner">
       <Button
         type="button"
         variant="ghost"
