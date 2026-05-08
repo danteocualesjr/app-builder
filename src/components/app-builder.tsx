@@ -4816,6 +4816,17 @@ function MarkdownMessage({ content }: { content: string }) {
             <ol className="ml-4 list-decimal whitespace-normal">{children}</ol>
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              className="font-medium text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
+              {...(href?.startsWith("http")
+                ? { target: "_blank", rel: "noreferrer noopener" }
+                : {})}
+            >
+              {children}
+            </a>
+          ),
           code: ({ children }) => (
             <code className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
               {children}
