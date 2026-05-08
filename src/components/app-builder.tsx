@@ -3323,12 +3323,12 @@ function ApiKeyOnboardingModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="api-key-onboarding-title"
-        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl"
+        className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xl"
         onSubmit={onSubmit}
       >
         <div className="border-b px-4 py-3">
           <div className="mb-3 flex items-center gap-2 text-muted-foreground">
-            <div className="grid size-6 place-items-center rounded-md bg-muted text-foreground">
+            <div className="grid size-6 place-items-center rounded-lg bg-muted text-foreground">
               <Cube aria-hidden="true" size={14} weight="duotone" />
             </div>
             <span className="text-xs font-medium">App Builder</span>
