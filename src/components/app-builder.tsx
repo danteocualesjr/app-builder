@@ -1891,9 +1891,6 @@ export function AppBuilder() {
                       onModelChange={selectModel}
                       onParameterChange={selectModelParameter}
                     />
-                    <span className="hidden min-w-0 truncate sm:inline text-[11px] text-muted-foreground/80">
-                      Enter to send · Shift+Enter for newline
-                    </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isRunning ? (
