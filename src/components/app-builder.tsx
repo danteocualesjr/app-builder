@@ -3126,7 +3126,7 @@ function StarterPrompts({
             key={entry.title}
             type="button"
             onClick={() => onSelect(entry.prompt)}
-            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-[color,background-color,border-color,box-shadow] hover:border-foreground/20 hover:bg-muted hover:text-foreground hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group flex flex-col gap-1 rounded-lg border border-border/90 bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground shadow-sm transition-[color,background-color,border-color,box-shadow,transform] duration-200 hover:border-foreground/25 hover:bg-muted hover:text-foreground hover:shadow-md motion-safe:hover:-translate-y-0.5 active:motion-safe:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <span className="text-sm font-medium text-foreground">
               {entry.title}
