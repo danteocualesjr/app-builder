@@ -1573,8 +1573,10 @@ export function AppBuilder() {
 
   return (
     <main
+      id="app-main"
+      tabIndex={-1}
       className={cn(
-        "flex h-screen gap-0 bg-background p-0",
+        "flex h-screen gap-0 bg-background p-0 outline-none",
         session ? "" : "items-stretch"
       )}
     >
