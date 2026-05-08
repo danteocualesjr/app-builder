@@ -4047,12 +4047,15 @@ function PreviewToolbar({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7 rounded-md"
+          className="size-7 rounded-md active:motion-safe:[&_svg]:rotate-180"
           aria-label="Refresh preview"
           title="Refresh preview"
           onClick={onRefreshPreview}
         >
-          <ArrowClockwise aria-hidden="true" className="size-4" />
+          <ArrowClockwise
+            aria-hidden="true"
+            className="size-4 transition-transform duration-500 ease-out"
+          />
         </Button>
         <Button
           type="button"
