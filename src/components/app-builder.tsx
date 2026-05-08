@@ -1679,7 +1679,7 @@ export function AppBuilder() {
                   className={cn(
                     "flex flex-col gap-1 text-sm leading-6",
                     getMessageDisplayRole(message) === "user" &&
-                      "w-fit max-w-[85%] self-end rounded-md bg-muted/80 px-3 py-2 text-foreground",
+                      "w-fit max-w-[85%] self-end rounded-md border border-border/40 bg-muted/80 px-3 py-2 text-foreground shadow-sm",
                     getMessageDisplayRole(message) === "assistant" &&
                       "py-1 text-foreground",
                     getMessageDisplayRole(message) === "activity" &&
