@@ -44,7 +44,9 @@ import {
   TerminalWindowIcon as Terminal,
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
+  WarningCircleIcon as WarningCircle,
   WrenchIcon as Wrench,
+  XIcon as XMark,
 } from "@phosphor-icons/react"
 import ReactMarkdown from "react-markdown"
 
@@ -251,6 +253,40 @@ const PREVIEW_DEVICE_OPTIONS: ReadonlyArray<{
 const SAVED_CURSOR_API_KEY = "app-builder.cursor-api-key"
 const SAVED_CHAT_STATE = "app-builder.chat-state"
 const CHAT_WIDTH_DEFAULT = 400
+const PREVIEW_DEVICE_STORAGE_KEY = "app-builder.preview-device-size"
+
+function readStoredPreviewDeviceSize(): PreviewDeviceSize {
+  if (typeof window === "undefined") {
+    return "desktop"
+  }
+  const raw = window.localStorage.getItem(PREVIEW_DEVICE_STORAGE_KEY)
+  if (raw === "mobile" || raw === "tablet" || raw === "desktop") {
+    return raw
+  }
+  return "desktop"
+}
+
+const LOGS_PANEL_OPEN_STORAGE_KEY = "app-builder.logs-panel-open"
+
+function readStoredLogsPanelOpen(): boolean {
+  if (typeof window === "undefined") {
+    return false
+  }
+  return window.localStorage.getItem(LOGS_PANEL_OPEN_STORAGE_KEY) === "1"
+}
+
+const PROJECT_SIDEBAR_OPEN_STORAGE_KEY = "app-builder.project-sidebar-open"
+
+function readStoredProjectSidebarOpen(): boolean {
+  if (typeof window === "undefined") {
+    return true
+  }
+  const raw = window.localStorage.getItem(PROJECT_SIDEBAR_OPEN_STORAGE_KEY)
+  if (raw === null) {
+    return true
+  }
+  return raw === "1"
+}
 
 const STARTER_PROMPTS: ReadonlyArray<{
   title: string
@@ -324,11 +360,13 @@ export function AppBuilder() {
       [initialAppState.activeConversationId]: createRuntimeState(),
     }
   })
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
-  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
+  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(
+    readStoredProjectSidebarOpen
+  )
+  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(readStoredLogsPanelOpen)
   const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
   const [previewDeviceSize, setPreviewDeviceSize] =
-    useState<PreviewDeviceSize>("desktop")
+    useState<PreviewDeviceSize>(readStoredPreviewDeviceSize)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(
     () => !isCursorApiKey(getSavedCursorApiKey() ?? "")
   )
@@ -378,6 +416,33 @@ export function AppBuilder() {
   useEffect(() => {
     conversationsRef.current = conversations
   }, [conversations])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(PREVIEW_DEVICE_STORAGE_KEY, previewDeviceSize)
+  }, [previewDeviceSize])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(
+      LOGS_PANEL_OPEN_STORAGE_KEY,
+      isLogsPanelOpen ? "1" : "0"
+    )
+  }, [isLogsPanelOpen])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(
+      PROJECT_SIDEBAR_OPEN_STORAGE_KEY,
+      isProjectSidebarOpen ? "1" : "0"
+    )
+  }, [isProjectSidebarOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -716,6 +781,9 @@ export function AppBuilder() {
     }))
     setActiveConversationId(conversation.id)
     setApiKey("")
+    queueMicrotask(() => {
+      chatInputRef.current?.focus()
+    })
   }
 
   function openOnboarding() {
@@ -1573,8 +1641,10 @@ export function AppBuilder() {
 
   return (
     <main
+      id="app-main"
+      tabIndex={-1}
       className={cn(
-        "flex h-screen gap-0 bg-background p-0",
+        "flex h-screen gap-0 bg-background p-0 outline-none",
         session ? "" : "items-stretch"
       )}
     >
@@ -1682,9 +1752,7 @@ export function AppBuilder() {
                   )}
                 >
                   {message.role === "user" ? (
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.content || "Working..."}
-                    </p>
+                    <UserChatBubble content={message.content} />
                   ) : getMessageDisplayRole(message) === "activity" ? (
                     <ActivityMessage message={message} />
                   ) : message.role === "assistant" && !message.content ? (
@@ -1696,7 +1764,7 @@ export function AppBuilder() {
               ))}
 
               {!session && hasSavedApiKey && sessionError ? (
-                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
+                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 ring-1 ring-destructive/20">
                   <p className="text-sm text-destructive">{sessionError}</p>
                   <div className="flex gap-2">
                     <Button
@@ -1747,6 +1815,26 @@ export function AppBuilder() {
                     )
                   }
                   onKeyDown={(event) => {
+                    if (event.key === "Escape" && input.trim() && !isRunning) {
+                      event.preventDefault()
+                      setConversationInput(activeConversation.id, "")
+                      return
+                    }
+                    if (event.key === "Tab" && !event.shiftKey) {
+                      event.preventDefault()
+                      const field = event.currentTarget
+                      const start = field.selectionStart ?? input.length
+                      const end = field.selectionEnd ?? input.length
+                      const next =
+                        input.slice(0, start) + "  " + input.slice(end)
+                      setConversationInput(activeConversation.id, next)
+                      const caret = start + 2
+                      queueMicrotask(() => {
+                        field.selectionStart = caret
+                        field.selectionEnd = caret
+                      })
+                      return
+                    }
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault()
                       event.currentTarget.form?.requestSubmit()
@@ -1769,6 +1857,9 @@ export function AppBuilder() {
                       onModelChange={selectModel}
                       onParameterChange={selectModelParameter}
                     />
+                    <span className="hidden min-w-0 truncate sm:inline text-[11px] text-muted-foreground/80">
+                      Enter to send · Shift+Enter for newline
+                    </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isRunning ? (
@@ -2531,12 +2622,12 @@ function ActivityMessage({ message }: { message: ChatMessage }) {
   const count = message.activityCount ?? getActivityCount(content)
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 leading-relaxed">
       <span
         aria-hidden="true"
-        className="grid size-4 shrink-0 place-items-center rounded-sm bg-muted/70 text-muted-foreground/80"
+        className="grid size-5 shrink-0 place-items-center rounded-sm bg-muted/70 text-muted-foreground/80"
       >
-        <Icon className="size-2.5" />
+        <Icon className="size-3" />
       </span>
       <span className="min-w-0 truncate text-muted-foreground/85">
         {segments.map((segment, index) =>
@@ -2985,13 +3076,13 @@ function StarterPrompts({
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-3 py-6">
       <div className="flex flex-col gap-1 text-center">
-        <div className="mx-auto grid size-8 place-items-center rounded-lg bg-muted text-foreground">
+        <div className="mx-auto grid size-9 place-items-center rounded-xl bg-muted text-foreground">
           <Sparkles aria-hidden="true" weight="duotone" />
         </div>
         <h2 className="text-sm font-semibold text-foreground">
           What do you want to build?
         </h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-balance text-xs text-muted-foreground">
           Pick a starter idea or describe your own app to get going.
         </p>
       </div>
@@ -3033,6 +3124,47 @@ function AssistantPending() {
   )
 }
 
+function UserChatBubble({ content }: { content: string }) {
+  const { showToast } = useToast()
+  const display = content || "Working..."
+
+  async function copyMessage() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(display)
+      showToast({
+        title: "Message copied",
+        description: "User prompt is on the clipboard.",
+      })
+    } catch {
+      showToast({
+        title: "Could not copy message",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
+    }
+  }
+
+  return (
+    <div className="group/user relative">
+      <p className="whitespace-pre-wrap break-words pr-8">{display}</p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="absolute right-0 top-0 size-7 rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted/80 hover:text-foreground focus-visible:opacity-100 group-hover/user:opacity-100"
+        aria-label="Copy message"
+        title="Copy message"
+        onClick={copyMessage}
+      >
+        <Copy aria-hidden="true" className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
 type KeyboardShortcut = {
   keys: string[]
   description: string
@@ -3048,6 +3180,12 @@ const KEYBOARD_SHORTCUTS: ReadonlyArray<KeyboardShortcut> = [
 ]
 
 function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [])
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -3084,8 +3222,8 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
         }
       }}
     >
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex max-h-[min(520px,88vh)] w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <div>
             <h2
               id="shortcuts-help-title"
@@ -3098,6 +3236,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             </p>
           </div>
           <Button
+            ref={closeButtonRef}
             type="button"
             variant="ghost"
             size="sm"
@@ -3107,11 +3246,11 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             Close
           </Button>
         </div>
-        <ul className="flex flex-col gap-1 p-2 text-sm">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-2 text-sm">
           {KEYBOARD_SHORTCUTS.map((shortcut) => (
             <li
               key={shortcut.keys.join("+")}
-              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5"
+              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/55"
             >
               <span className="text-foreground">{shortcut.description}</span>
               <span className="flex shrink-0 items-center gap-1">
@@ -3120,7 +3259,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
                     {index > 0 ? (
                       <span className="text-xs text-muted-foreground">+</span>
                     ) : null}
-                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground">
+                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border border-border/80 bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground shadow-sm">
                       {renderKey(key)}
                     </kbd>
                   </span>
@@ -3153,7 +3292,7 @@ function ApiKeyOnboardingModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="api-key-onboarding-title"
-        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg"
+        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl"
         onSubmit={onSubmit}
       >
         <div className="border-b px-4 py-3">
@@ -3172,6 +3311,10 @@ function ApiKeyOnboardingModal({
           <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
             Add your Cursor API key to start a local preview workspace. You can
             update or clear it later from settings.
+          </p>
+          <p className="mt-2 text-[11px] leading-4 text-muted-foreground/90">
+            Your key is stored only in this browser&apos;s local storage and is
+            never sent except to connect your sessions.
           </p>
         </div>
 
@@ -3198,10 +3341,12 @@ function ApiKeyOnboardingModal({
               {sessionError}
             </p>
           ) : null}
+        </div>
+        <div className="border-t border-border/60 bg-muted/15 px-4 py-3">
           <Button
             type="submit"
             disabled={!apiKey.trim() || isCreatingSession}
-            className="h-9 rounded-md"
+            className="h-9 w-full rounded-md"
           >
             {isCreatingSession ? (
               <Loader2 data-icon="inline-start" className="animate-spin" />
@@ -3392,7 +3537,7 @@ function ConversationSidebar({
   }
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-muted/30">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-muted/30 shadow-sm">
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-1 px-2 pt-2">
           <div className="mb-1 flex items-center gap-1">
@@ -3429,8 +3574,18 @@ function ConversationSidebar({
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search projects"
                 aria-label="Search projects"
-                className="h-8 rounded-md pl-7 text-sm"
+                className="h-8 rounded-md pl-7 pr-8 text-sm"
               />
+              {trimmedSearch ? (
+                <button
+                  type="button"
+                  aria-label="Clear project search"
+                  className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <XMark aria-hidden="true" className="size-3.5" />
+                </button>
+              ) : null}
             </div>
           ) : null}
           {filteredConversations.length === 0 && trimmedSearch ? (
@@ -3615,7 +3770,7 @@ function ConversationSidebar({
           ) : null}
         </div>
       </ScrollArea>
-      <div className="flex items-center justify-between gap-2 py-2 pl-4 pr-2">
+      <div className="flex items-center justify-between gap-2 border-t border-border/70 bg-muted/25 py-2 pl-4 pr-2">
         <div className="min-w-0 flex-1">
           {user ? (
             <p
@@ -3772,12 +3927,12 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="rounded-md text-muted-foreground"
+      className="rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted"
       aria-label={`Theme: ${label}. Switch to ${getThemePresentation(next).label}.`}
       title={`Theme: ${label}`}
       onClick={() => onPreferenceChange(next)}
     >
-      <Icon aria-hidden="true" />
+      <Icon aria-hidden="true" className="transition-transform duration-200" />
     </Button>
   )
 }
@@ -3846,18 +4001,20 @@ function CollapsedProjectSidebar({
   onShowSidebar: () => void
 }) {
   return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="rounded-md text-muted-foreground"
-        aria-label="Show projects sidebar"
-        title="Show projects sidebar"
-        onClick={onShowSidebar}
-      >
-        <PanelLeftOpen aria-hidden="true" />
-      </Button>
+    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-3">
+      <div className="rounded-lg bg-muted/50 p-0.5 shadow-inner">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="rounded-md text-muted-foreground"
+          aria-label="Show projects sidebar"
+          title="Show projects sidebar"
+          onClick={onShowSidebar}
+        >
+          <PanelLeftOpen aria-hidden="true" />
+        </Button>
+      </div>
     </div>
   )
 }
@@ -3885,7 +4042,7 @@ function PreviewFrame({
   return (
     <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-muted/20 p-6">
       <div
-        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg"
+        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg transition-shadow duration-300 hover:shadow-xl"
         style={{ width, maxWidth: "100%" }}
       >
         <iframe
@@ -3896,6 +4053,14 @@ function PreviewFrame({
       </div>
     </div>
   )
+}
+
+function formatPreviewUrlForToolbar(url: string, maxLength = 52) {
+  if (url.length <= maxLength) {
+    return url
+  }
+  const keep = Math.max(8, Math.floor((maxLength - 1) / 2))
+  return `${url.slice(0, keep)}…${url.slice(-keep)}`
 }
 
 function PreviewToolbar({
@@ -4008,12 +4173,15 @@ function PreviewToolbar({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7 rounded-md"
+          className="size-7 rounded-md active:motion-safe:[&_svg]:rotate-180"
           aria-label="Refresh preview"
           title="Refresh preview"
           onClick={onRefreshPreview}
         >
-          <ArrowClockwise aria-hidden="true" className="size-4" />
+          <ArrowClockwise
+            aria-hidden="true"
+            className="size-4 transition-transform duration-500 ease-out"
+          />
         </Button>
         <Button
           type="button"
@@ -4087,6 +4255,7 @@ function LogsPanel({
   const [searchQuery, setSearchQuery] = useState("")
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [isCopied, setIsCopied] = useState(false)
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isPinnedToBottomRef = useRef(true)
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4208,11 +4377,23 @@ function LogsPanel({
     const distanceFromBottom =
       node.scrollHeight - node.scrollTop - node.clientHeight
     isPinnedToBottomRef.current = distanceFromBottom < 24
+    setShowJumpToLatest(distanceFromBottom >= 48 && entries.length > 0)
+  }
+
+  function jumpToLatestLogs() {
+    const node = scrollRef.current
+    if (!node) {
+      return
+    }
+    node.scrollTop = node.scrollHeight
+    isPinnedToBottomRef.current = true
+    setShowJumpToLatest(false)
   }
 
   function clearLogs() {
     setEntries([])
     isPinnedToBottomRef.current = true
+    setShowJumpToLatest(false)
   }
 
   function formatEntriesAsText(items: LogEntryView[]) {
@@ -4361,17 +4542,24 @@ function LogsPanel({
           ))}
         </select>
       </div>
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
-      >
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="h-full min-h-0 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
+        >
         {entries.length === 0 && status !== "error" ? (
-          <p className="text-zinc-500">
-            {status === "connecting"
-              ? "Connecting to session log stream..."
-              : "Waiting for output..."}
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <Terminal
+              aria-hidden="true"
+              className="size-9 text-zinc-600 opacity-50"
+            />
+            <p className="max-w-xs text-xs leading-relaxed text-zinc-500">
+              {status === "connecting"
+                ? "Connecting to the session log stream…"
+                : "Waiting for output from your preview workspace…"}
+            </p>
+          </div>
         ) : null}
         {entries.length > 0 && visibleEntries.length === 0 ? (
           <p className="text-zinc-500">
@@ -4390,6 +4578,20 @@ function LogsPanel({
             <span className="text-zinc-100">{entry.line}</span>
           </div>
         ))}
+        </div>
+        {showJumpToLatest ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-2 pt-6">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="pointer-events-auto border border-zinc-600 bg-zinc-800 text-xs text-zinc-100 shadow-md hover:bg-zinc-700"
+              onClick={jumpToLatestLogs}
+            >
+              Jump to latest
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -4434,6 +4636,44 @@ function formatLogTimestamp(value: number) {
   return `${hours}:${minutes}:${seconds}`
 }
 
+function downloadConversationTranscript(conversation: Conversation): string {
+  if (typeof window === "undefined") {
+    return ""
+  }
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    title: conversation.title,
+    conversationId: conversation.id,
+    model: conversation.model,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    messages: conversation.messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  const slug = conversation.title
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
+  const filename = `app-builder-${slug || "chat"}-${stamp}.json`
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
 function ProjectChatHeader({
   conversation,
   session,
@@ -4445,10 +4685,12 @@ function ProjectChatHeader({
   title: string
   updatedAt: number
 }) {
+  const { showToast } = useToast()
+
   return (
     <div className="flex min-h-10 items-center justify-between gap-2 border-b bg-muted/30 px-3 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">
+        <p className="truncate text-sm font-semibold tracking-tight text-foreground">
           {title}
         </p>
         <p className="truncate text-xs text-muted-foreground">
@@ -4490,6 +4732,24 @@ function ProjectChatHeader({
               value={formatMetadataTimestamp(conversation.updatedAt)}
             />
           </dl>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 w-full rounded-md"
+            onClick={() => {
+              const filename = downloadConversationTranscript(conversation)
+              if (filename) {
+                showToast({
+                  title: "Chat exported",
+                  description: `Saved as ${filename}`,
+                })
+              }
+            }}
+          >
+            <FileText data-icon="inline-start" className="size-4" />
+            Export transcript
+          </Button>
         </PopoverContent>
       </Popover>
     </div>
@@ -4777,6 +5037,28 @@ function MarkdownMessage({ content }: { content: string }) {
             <ol className="ml-4 list-decimal whitespace-normal">{children}</ol>
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
+          strong: ({ children }) => (
+            <strong className="font-semibold text-foreground">{children}</strong>
+          ),
+          a: ({ href, children }) => {
+            const isHttp =
+              typeof href === "string" &&
+              (href.startsWith("http:") || href.startsWith("https:"))
+            return (
+              <a
+                href={href}
+                className="font-medium text-primary underline decoration-primary/30 underline-offset-2 transition-colors hover:decoration-primary"
+                {...(isHttp ? { target: "_blank", rel: "noreferrer" } : {})}
+              >
+                {children}
+              </a>
+            )
+          },
+          blockquote: ({ children }) => (
+            <blockquote className="my-2 border-l-2 border-muted-foreground/30 pl-3 text-muted-foreground">
+              {children}
+            </blockquote>
+          ),
           code: ({ children }) => (
             <code className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
               {children}
@@ -4792,6 +5074,7 @@ function MarkdownMessage({ content }: { content: string }) {
 }
 
 function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
+  const { showToast } = useToast()
   const codeText = useMemo(() => extractTextContent(children), [children])
   const [isCopied, setIsCopied] = useState(false)
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4811,12 +5094,20 @@ function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
     try {
       await navigator.clipboard.writeText(codeText)
       setIsCopied(true)
+      showToast({
+        title: "Code copied",
+        description: "The snippet is on the clipboard.",
+      })
       if (resetTimeoutRef.current) {
         clearTimeout(resetTimeoutRef.current)
       }
       resetTimeoutRef.current = setTimeout(() => setIsCopied(false), 1_500)
     } catch {
-      // Clipboard access may be blocked; the code is still selectable inside the block.
+      showToast({
+        title: "Could not copy code",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
     }
   }
 
