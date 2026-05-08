@@ -3258,7 +3258,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
         }
       }}
     >
-      <div className="flex max-h-[min(520px,88vh)] w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl">
+      <div className="flex max-h-[min(520px,88vh)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-xl ring-1 ring-foreground/5">
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <div>
             <h2
