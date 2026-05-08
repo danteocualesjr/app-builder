@@ -1713,14 +1713,9 @@ export function AppBuilder() {
               )}
             >
               {showProjectSetup ? (
-                <div className="flex flex-col items-center gap-2 py-4">
-                  <Loader2
-                    aria-hidden="true"
-                    className="size-5 animate-spin text-muted-foreground"
-                  />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Setting up project…
-                  </p>
+                <div className="mr-8 flex w-fit items-center gap-2 rounded-md bg-muted/70 px-2.5 py-1.5 text-sm text-muted-foreground">
+                  <Loader2 aria-hidden="true" className="animate-spin" />
+                  Setting up project…
                 </div>
               ) : isCursorTyping ? (
                 <div className="mr-8 flex w-fit items-center gap-2 rounded-md bg-muted/70 px-2.5 py-1.5 text-sm text-muted-foreground">
@@ -1747,7 +1742,7 @@ export function AppBuilder() {
                   className={cn(
                     "flex flex-col gap-1 text-sm leading-6",
                     getMessageDisplayRole(message) === "user" &&
-                      "w-fit max-w-[85%] self-end rounded-2xl bg-muted/80 px-3 py-2 text-foreground shadow-sm",
+                      "w-fit max-w-[85%] self-end rounded-2xl bg-muted/80 px-3 py-2 text-foreground",
                     getMessageDisplayRole(message) === "assistant" &&
                       "py-1 text-foreground",
                     getMessageDisplayRole(message) === "activity" &&
@@ -1850,8 +1845,11 @@ export function AppBuilder() {
                   disabled={isRunning}
                   className="max-h-40 min-h-16 resize-none border-0 bg-transparent px-1 py-0 text-base shadow-none focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent"
                 />
-                <div className="flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                <p className="px-1 pt-1.5 text-[11px] leading-4 text-muted-foreground">
+                  Enter to send · Shift+Enter for a new line
+                </p>
+                <div className="flex items-center justify-between gap-2 pt-2 text-xs text-muted-foreground">
+                  <div className="flex min-w-0 items-center gap-2">
                     <ModelConfigPopover
                       models={availableModels}
                       selectedModel={selectedModel}
@@ -3112,13 +3110,13 @@ function StarterPrompts({
 function AssistantPending() {
   return (
     <div
-      className="flex items-center gap-1 py-1 text-muted-foreground"
+      className="flex items-center gap-1.5 py-1.5 text-muted-foreground"
       aria-label="Assistant is thinking"
     >
       {[0, 1, 2].map((index) => (
         <span
           key={index}
-          className="size-1.5 rounded-full bg-muted-foreground/60 motion-safe:animate-bounce"
+          className="size-2 animate-bounce rounded-full bg-muted-foreground/55"
           style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
@@ -4118,15 +4116,23 @@ function PreviewToolbar({
 
   return (
     <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b bg-muted/30 px-3 text-xs text-muted-foreground">
-      <a
-        href={previewUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="min-w-0 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
-        title={previewUrl}
-      >
-        {formatPreviewUrlForToolbar(previewUrl)}
-      </a>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span
+          className="hidden shrink-0 select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/75 sm:inline"
+          title="Local preview address"
+        >
+          Preview
+        </span>
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="min-w-0 flex-1 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
+          title={`Open ${previewUrl} in a new tab`}
+        >
+          {previewUrl}
+        </a>
+      </div>
       <div className="flex shrink-0 items-center gap-1">
         <ToggleGroup
           value={[previewDeviceSize]}
