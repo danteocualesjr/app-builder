@@ -1648,7 +1648,9 @@ export function AppBuilder() {
   if (!hasMounted) {
     return (
       <main
-        className="flex h-screen items-center justify-center bg-background p-6"
+        id="app-main"
+        tabIndex={-1}
+        className="flex h-screen items-center justify-center bg-background p-6 outline-none"
         role="status"
         aria-live="polite"
       >
