@@ -253,6 +253,40 @@ const PREVIEW_DEVICE_OPTIONS: ReadonlyArray<{
 const SAVED_CURSOR_API_KEY = "app-builder.cursor-api-key"
 const SAVED_CHAT_STATE = "app-builder.chat-state"
 const CHAT_WIDTH_DEFAULT = 400
+const PREVIEW_DEVICE_STORAGE_KEY = "app-builder.preview-device-size"
+
+function readStoredPreviewDeviceSize(): PreviewDeviceSize {
+  if (typeof window === "undefined") {
+    return "desktop"
+  }
+  const raw = window.localStorage.getItem(PREVIEW_DEVICE_STORAGE_KEY)
+  if (raw === "mobile" || raw === "tablet" || raw === "desktop") {
+    return raw
+  }
+  return "desktop"
+}
+
+const LOGS_PANEL_OPEN_STORAGE_KEY = "app-builder.logs-panel-open"
+
+function readStoredLogsPanelOpen(): boolean {
+  if (typeof window === "undefined") {
+    return false
+  }
+  return window.localStorage.getItem(LOGS_PANEL_OPEN_STORAGE_KEY) === "1"
+}
+
+const PROJECT_SIDEBAR_OPEN_STORAGE_KEY = "app-builder.project-sidebar-open"
+
+function readStoredProjectSidebarOpen(): boolean {
+  if (typeof window === "undefined") {
+    return true
+  }
+  const raw = window.localStorage.getItem(PROJECT_SIDEBAR_OPEN_STORAGE_KEY)
+  if (raw === null) {
+    return true
+  }
+  return raw === "1"
+}
 
 const STARTER_PROMPTS: ReadonlyArray<{
   title: string
@@ -326,11 +360,13 @@ export function AppBuilder() {
       [initialAppState.activeConversationId]: createRuntimeState(),
     }
   })
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
-  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(false)
+  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(
+    readStoredProjectSidebarOpen
+  )
+  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(readStoredLogsPanelOpen)
   const [previewRefreshCounter, setPreviewRefreshCounter] = useState(0)
   const [previewDeviceSize, setPreviewDeviceSize] =
-    useState<PreviewDeviceSize>("desktop")
+    useState<PreviewDeviceSize>(readStoredPreviewDeviceSize)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(
     () => !isCursorApiKey(getSavedCursorApiKey() ?? "")
   )
@@ -380,6 +416,33 @@ export function AppBuilder() {
   useEffect(() => {
     conversationsRef.current = conversations
   }, [conversations])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(PREVIEW_DEVICE_STORAGE_KEY, previewDeviceSize)
+  }, [previewDeviceSize])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(
+      LOGS_PANEL_OPEN_STORAGE_KEY,
+      isLogsPanelOpen ? "1" : "0"
+    )
+  }, [isLogsPanelOpen])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.localStorage.setItem(
+      PROJECT_SIDEBAR_OPEN_STORAGE_KEY,
+      isProjectSidebarOpen ? "1" : "0"
+    )
+  }, [isProjectSidebarOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -718,6 +781,9 @@ export function AppBuilder() {
     }))
     setActiveConversationId(conversation.id)
     setApiKey("")
+    queueMicrotask(() => {
+      chatInputRef.current?.focus()
+    })
   }
 
   function openOnboarding() {
@@ -1691,9 +1757,7 @@ export function AppBuilder() {
                   )}
                 >
                   {message.role === "user" ? (
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.content || "Working..."}
-                    </p>
+                    <UserChatBubble content={message.content} />
                   ) : getMessageDisplayRole(message) === "activity" ? (
                     <ActivityMessage message={message} />
                   ) : message.role === "assistant" && !message.content ? (
@@ -1756,6 +1820,26 @@ export function AppBuilder() {
                     )
                   }
                   onKeyDown={(event) => {
+                    if (event.key === "Escape" && input.trim() && !isRunning) {
+                      event.preventDefault()
+                      setConversationInput(activeConversation.id, "")
+                      return
+                    }
+                    if (event.key === "Tab" && !event.shiftKey) {
+                      event.preventDefault()
+                      const field = event.currentTarget
+                      const start = field.selectionStart ?? input.length
+                      const end = field.selectionEnd ?? input.length
+                      const next =
+                        input.slice(0, start) + "  " + input.slice(end)
+                      setConversationInput(activeConversation.id, next)
+                      const caret = start + 2
+                      queueMicrotask(() => {
+                        field.selectionStart = caret
+                        field.selectionEnd = caret
+                      })
+                      return
+                    }
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault()
                       event.currentTarget.form?.requestSubmit()
@@ -3042,6 +3126,47 @@ function AssistantPending() {
   )
 }
 
+function UserChatBubble({ content }: { content: string }) {
+  const { showToast } = useToast()
+  const display = content || "Working..."
+
+  async function copyMessage() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(display)
+      showToast({
+        title: "Message copied",
+        description: "User prompt is on the clipboard.",
+      })
+    } catch {
+      showToast({
+        title: "Could not copy message",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
+    }
+  }
+
+  return (
+    <div className="group/user relative">
+      <p className="whitespace-pre-wrap break-words pr-8">{display}</p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="absolute right-0 top-0 size-7 rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted/80 hover:text-foreground focus-visible:opacity-100 group-hover/user:opacity-100"
+        aria-label="Copy message"
+        title="Copy message"
+        onClick={copyMessage}
+      >
+        <Copy aria-hidden="true" className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
 type KeyboardShortcut = {
   keys: string[]
   description: string
@@ -4124,6 +4249,7 @@ function LogsPanel({
   const [searchQuery, setSearchQuery] = useState("")
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [isCopied, setIsCopied] = useState(false)
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const isPinnedToBottomRef = useRef(true)
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4245,11 +4371,23 @@ function LogsPanel({
     const distanceFromBottom =
       node.scrollHeight - node.scrollTop - node.clientHeight
     isPinnedToBottomRef.current = distanceFromBottom < 24
+    setShowJumpToLatest(distanceFromBottom >= 48 && entries.length > 0)
+  }
+
+  function jumpToLatestLogs() {
+    const node = scrollRef.current
+    if (!node) {
+      return
+    }
+    node.scrollTop = node.scrollHeight
+    isPinnedToBottomRef.current = true
+    setShowJumpToLatest(false)
   }
 
   function clearLogs() {
     setEntries([])
     isPinnedToBottomRef.current = true
+    setShowJumpToLatest(false)
   }
 
   function formatEntriesAsText(items: LogEntryView[]) {
@@ -4398,11 +4536,12 @@ function LogsPanel({
           ))}
         </select>
       </div>
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
-      >
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="h-full min-h-0 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
+        >
         {entries.length === 0 && status !== "error" ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <Terminal
@@ -4433,6 +4572,20 @@ function LogsPanel({
             <span className="text-zinc-100">{entry.line}</span>
           </div>
         ))}
+        </div>
+        {showJumpToLatest ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-2 pt-6">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="pointer-events-auto border border-zinc-600 bg-zinc-800 text-xs text-zinc-100 shadow-md hover:bg-zinc-700"
+              onClick={jumpToLatestLogs}
+            >
+              Jump to latest
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -4477,6 +4630,44 @@ function formatLogTimestamp(value: number) {
   return `${hours}:${minutes}:${seconds}`
 }
 
+function downloadConversationTranscript(conversation: Conversation): string {
+  if (typeof window === "undefined") {
+    return ""
+  }
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    title: conversation.title,
+    conversationId: conversation.id,
+    model: conversation.model,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    messages: conversation.messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    })),
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  const slug = conversation.title
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
+  const filename = `app-builder-${slug || "chat"}-${stamp}.json`
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
 function ProjectChatHeader({
   conversation,
   session,
@@ -4488,6 +4679,8 @@ function ProjectChatHeader({
   title: string
   updatedAt: number
 }) {
+  const { showToast } = useToast()
+
   return (
     <div className="flex min-h-10 items-center justify-between gap-2 border-b bg-muted/30 px-3 py-1.5">
       <div className="min-w-0">
@@ -4533,6 +4726,24 @@ function ProjectChatHeader({
               value={formatMetadataTimestamp(conversation.updatedAt)}
             />
           </dl>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 w-full rounded-md"
+            onClick={() => {
+              const filename = downloadConversationTranscript(conversation)
+              if (filename) {
+                showToast({
+                  title: "Chat exported",
+                  description: `Saved as ${filename}`,
+                })
+              }
+            }}
+          >
+            <FileText data-icon="inline-start" className="size-4" />
+            Export transcript
+          </Button>
         </PopoverContent>
       </Popover>
     </div>
@@ -4857,6 +5068,7 @@ function MarkdownMessage({ content }: { content: string }) {
 }
 
 function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
+  const { showToast } = useToast()
   const codeText = useMemo(() => extractTextContent(children), [children])
   const [isCopied, setIsCopied] = useState(false)
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -4876,12 +5088,20 @@ function MarkdownCodeBlock({ children }: { children: React.ReactNode }) {
     try {
       await navigator.clipboard.writeText(codeText)
       setIsCopied(true)
+      showToast({
+        title: "Code copied",
+        description: "The snippet is on the clipboard.",
+      })
       if (resetTimeoutRef.current) {
         clearTimeout(resetTimeoutRef.current)
       }
       resetTimeoutRef.current = setTimeout(() => setIsCopied(false), 1_500)
     } catch {
-      // Clipboard access may be blocked; the code is still selectable inside the block.
+      showToast({
+        title: "Could not copy code",
+        description: "Clipboard access was blocked.",
+        variant: "error",
+      })
     }
   }
 
