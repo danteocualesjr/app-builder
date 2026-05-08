@@ -45,6 +45,7 @@ import {
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
   WrenchIcon as Wrench,
+  XIcon as XMark,
 } from "@phosphor-icons/react"
 import ReactMarkdown from "react-markdown"
 
@@ -3447,8 +3448,18 @@ function ConversationSidebar({
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search projects"
                 aria-label="Search projects"
-                className="h-8 rounded-md pl-7 text-sm"
+                className="h-8 rounded-md pl-7 pr-8 text-sm"
               />
+              {trimmedSearch ? (
+                <button
+                  type="button"
+                  aria-label="Clear project search"
+                  className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <XMark aria-hidden="true" className="size-3.5" />
+                </button>
+              ) : null}
             </div>
           ) : null}
           {filteredConversations.length === 0 && trimmedSearch ? (
