@@ -44,7 +44,9 @@ import {
   TerminalWindowIcon as Terminal,
   TrashIcon as Trash2,
   type Icon as PhosphorIcon,
+  WarningCircleIcon as WarningCircle,
   WrenchIcon as Wrench,
+  XIcon as XMark,
 } from "@phosphor-icons/react"
 import ReactMarkdown from "react-markdown"
 
@@ -1573,8 +1575,10 @@ export function AppBuilder() {
 
   return (
     <main
+      id="app-main"
+      tabIndex={-1}
       className={cn(
-        "flex h-screen gap-0 bg-background p-0",
+        "flex h-screen gap-0 bg-background p-0 outline-none",
         session ? "" : "items-stretch"
       )}
     >
@@ -1643,9 +1647,15 @@ export function AppBuilder() {
               )}
             >
               {showProjectSetup ? (
-                <p className="text-sm font-medium text-muted-foreground">
-                  Setting up project ...
-                </p>
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <Loader2
+                    aria-hidden="true"
+                    className="size-5 animate-spin text-muted-foreground"
+                  />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Setting up project…
+                  </p>
+                </div>
               ) : isCursorTyping ? (
                 <div className="mr-8 flex w-fit items-center gap-2 rounded-md bg-muted/70 px-2.5 py-1.5 text-sm text-muted-foreground">
                   <Loader2 aria-hidden="true" className="animate-spin" />
@@ -1671,7 +1681,7 @@ export function AppBuilder() {
                   className={cn(
                     "flex flex-col gap-1 text-sm leading-6",
                     getMessageDisplayRole(message) === "user" &&
-                      "w-fit max-w-[85%] self-end rounded-md bg-muted/80 px-3 py-2 text-foreground",
+                      "w-fit max-w-[85%] self-end rounded-md border border-border/40 bg-muted/80 px-3 py-2 text-foreground shadow-sm",
                     getMessageDisplayRole(message) === "assistant" &&
                       "py-1 text-foreground",
                     getMessageDisplayRole(message) === "activity" &&
@@ -1695,8 +1705,17 @@ export function AppBuilder() {
               ))}
 
               {!session && hasSavedApiKey && sessionError ? (
-                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
-                  <p className="text-sm text-destructive">{sessionError}</p>
+                <div className="flex flex-col gap-3 rounded-lg border border-destructive/25 bg-card p-3">
+                  <div className="flex gap-2.5">
+                    <WarningCircle
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0 text-destructive"
+                      weight="fill"
+                    />
+                    <p className="text-sm leading-snug text-destructive">
+                      {sessionError}
+                    </p>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -1757,7 +1776,7 @@ export function AppBuilder() {
                   className="max-h-40 min-h-16 resize-none border-0 bg-transparent px-1 py-0 text-base shadow-none focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent"
                 />
                 <div className="flex items-center justify-between gap-2 pt-3 text-xs text-muted-foreground">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <ModelConfigPopover
                       models={availableModels}
                       selectedModel={selectedModel}
@@ -1765,6 +1784,9 @@ export function AppBuilder() {
                       onModelChange={selectModel}
                       onParameterChange={selectModelParameter}
                     />
+                    <span className="hidden min-w-0 truncate sm:inline text-[11px] text-muted-foreground/80">
+                      Enter to send · Shift+Enter for newline
+                    </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isRunning ? (
@@ -2997,7 +3019,7 @@ function StarterPrompts({
             key={entry.title}
             type="button"
             onClick={() => onSelect(entry.prompt)}
-            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-all duration-150 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-muted hover:text-foreground hover:shadow-sm motion-reduce:transform-none motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <span className="text-sm font-medium text-foreground">
               {entry.title}
@@ -3021,7 +3043,7 @@ function AssistantPending() {
       {[0, 1, 2].map((index) => (
         <span
           key={index}
-          className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+          className="size-1.5 rounded-full bg-muted-foreground/60 motion-safe:animate-bounce"
           style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
@@ -3044,6 +3066,12 @@ const KEYBOARD_SHORTCUTS: ReadonlyArray<KeyboardShortcut> = [
 ]
 
 function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [])
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -3094,6 +3122,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             </p>
           </div>
           <Button
+            ref={closeButtonRef}
             type="button"
             variant="ghost"
             size="sm"
@@ -3168,6 +3197,10 @@ function ApiKeyOnboardingModal({
           <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
             Add your Cursor API key to start a local preview workspace. You can
             update or clear it later from settings.
+          </p>
+          <p className="mt-2 text-[11px] leading-4 text-muted-foreground/90">
+            Your key is stored only in this browser&apos;s local storage and is
+            never sent except to connect your sessions.
           </p>
         </div>
 
@@ -3425,8 +3458,18 @@ function ConversationSidebar({
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search projects"
                 aria-label="Search projects"
-                className="h-8 rounded-md pl-7 text-sm"
+                className="h-8 rounded-md pl-7 pr-8 text-sm"
               />
+              {trimmedSearch ? (
+                <button
+                  type="button"
+                  aria-label="Clear project search"
+                  className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <XMark aria-hidden="true" className="size-3.5" />
+                </button>
+              ) : null}
             </div>
           ) : null}
           {filteredConversations.length === 0 && trimmedSearch ? (
@@ -3768,12 +3811,12 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="rounded-md text-muted-foreground"
+      className="rounded-md text-muted-foreground transition-colors duration-200"
       aria-label={`Theme: ${label}. Switch to ${getThemePresentation(next).label}.`}
       title={`Theme: ${label}`}
       onClick={() => onPreferenceChange(next)}
     >
-      <Icon aria-hidden="true" />
+      <Icon aria-hidden="true" className="transition-transform duration-200" />
     </Button>
   )
 }
@@ -3842,7 +3885,7 @@ function CollapsedProjectSidebar({
   onShowSidebar: () => void
 }) {
   return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2">
+    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r border-border/70 bg-muted/30 py-2 shadow-inner">
       <Button
         type="button"
         variant="ghost"
@@ -3881,7 +3924,7 @@ function PreviewFrame({
   return (
     <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-muted/20 p-6">
       <div
-        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg"
+        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg transition-shadow duration-300 hover:shadow-xl"
         style={{ width, maxWidth: "100%" }}
       >
         <iframe
@@ -3892,6 +3935,14 @@ function PreviewFrame({
       </div>
     </div>
   )
+}
+
+function formatPreviewUrlForToolbar(url: string, maxLength = 52) {
+  if (url.length <= maxLength) {
+    return url
+  }
+  const keep = Math.max(8, Math.floor((maxLength - 1) / 2))
+  return `${url.slice(0, keep)}…${url.slice(-keep)}`
 }
 
 function PreviewToolbar({
@@ -3952,9 +4003,9 @@ function PreviewToolbar({
         target="_blank"
         rel="noreferrer"
         className="min-w-0 truncate font-mono text-muted-foreground transition-colors hover:text-foreground"
-        title={`Open ${previewUrl} in a new tab`}
+        title={previewUrl}
       >
-        {previewUrl}
+        {formatPreviewUrlForToolbar(previewUrl)}
       </a>
       <div className="flex shrink-0 items-center gap-1">
         <ToggleGroup
@@ -3996,12 +4047,15 @@ function PreviewToolbar({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="size-7 rounded-md"
+          className="size-7 rounded-md active:motion-safe:[&_svg]:rotate-180"
           aria-label="Refresh preview"
           title="Refresh preview"
           onClick={onRefreshPreview}
         >
-          <ArrowClockwise aria-hidden="true" className="size-4" />
+          <ArrowClockwise
+            aria-hidden="true"
+            className="size-4 transition-transform duration-500 ease-out"
+          />
         </Button>
         <Button
           type="button"
@@ -4355,11 +4409,17 @@ function LogsPanel({
         className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
       >
         {entries.length === 0 && status !== "error" ? (
-          <p className="text-zinc-500">
-            {status === "connecting"
-              ? "Connecting to session log stream..."
-              : "Waiting for output..."}
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <Terminal
+              aria-hidden="true"
+              className="size-9 text-zinc-600 opacity-50"
+            />
+            <p className="max-w-xs text-xs leading-relaxed text-zinc-500">
+              {status === "connecting"
+                ? "Connecting to the session log stream…"
+                : "Waiting for output from your preview workspace…"}
+            </p>
+          </div>
         ) : null}
         {entries.length > 0 && visibleEntries.length === 0 ? (
           <p className="text-zinc-500">
@@ -4436,8 +4496,11 @@ function ProjectChatHeader({
   return (
     <div className="flex min-h-10 items-center justify-between gap-2 border-b px-3 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">
-          {title}
+        <p className="flex min-w-0 items-center gap-2 truncate text-sm font-semibold text-foreground">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+            <Cube aria-hidden="true" className="size-3.5" weight="duotone" />
+          </span>
+          <span className="truncate">{title}</span>
         </p>
         <p className="truncate text-xs text-muted-foreground">
           {formatHeaderUpdatedAt(updatedAt)}
@@ -4765,6 +4828,17 @@ function MarkdownMessage({ content }: { content: string }) {
             <ol className="ml-4 list-decimal whitespace-normal">{children}</ol>
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              className="font-medium text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
+              {...(href?.startsWith("http")
+                ? { target: "_blank", rel: "noreferrer noopener" }
+                : {})}
+            >
+              {children}
+            </a>
+          ),
           code: ({ children }) => (
             <code className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
               {children}

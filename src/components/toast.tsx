@@ -145,7 +145,7 @@ function ToastViewport({
             key={toast.id}
             role={toast.variant === "error" ? "alert" : "status"}
             className={cn(
-              "pointer-events-auto flex items-start gap-3 rounded-md border bg-card p-3 text-sm text-card-foreground shadow-lg",
+              "pointer-events-auto flex items-start gap-3 rounded-md border bg-card p-3 text-sm text-card-foreground shadow-lg motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-3 motion-safe:duration-200",
               getToastBorderClass(toast.variant)
             )}
           >
