@@ -3914,7 +3914,7 @@ function PreviewFrame({
   return (
     <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-muted/20 p-6">
       <div
-        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg"
+        className="flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-lg transition-shadow duration-300 hover:shadow-xl"
         style={{ width, maxWidth: "100%" }}
       >
         <iframe
