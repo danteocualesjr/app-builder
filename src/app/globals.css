@@ -126,6 +126,11 @@
   }
   html {
     @apply font-sans;
+    scrollbar-gutter: stable;
+  }
+
+  ::selection {
+    @apply bg-primary/15 text-foreground;
   }
   @media (prefers-reduced-motion: no-preference) {
     html {

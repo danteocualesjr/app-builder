@@ -1681,7 +1681,7 @@ export function AppBuilder() {
                   className={cn(
                     "flex flex-col gap-1 text-sm leading-6",
                     getMessageDisplayRole(message) === "user" &&
-                      "w-fit max-w-[85%] self-end rounded-md border border-border/40 bg-muted/80 px-3 py-2 text-foreground shadow-sm",
+                      "w-fit max-w-[85%] self-end rounded-2xl bg-muted/80 px-3 py-2 text-foreground shadow-sm",
                     getMessageDisplayRole(message) === "assistant" &&
                       "py-1 text-foreground",
                     getMessageDisplayRole(message) === "activity" &&
@@ -1705,17 +1705,8 @@ export function AppBuilder() {
               ))}
 
               {!session && hasSavedApiKey && sessionError ? (
-                <div className="flex flex-col gap-3 rounded-lg border border-destructive/25 bg-card p-3">
-                  <div className="flex gap-2.5">
-                    <WarningCircle
-                      aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0 text-destructive"
-                      weight="fill"
-                    />
-                    <p className="text-sm leading-snug text-destructive">
-                      {sessionError}
-                    </p>
-                  </div>
+                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 ring-1 ring-destructive/20">
+                  <p className="text-sm text-destructive">{sessionError}</p>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -2549,12 +2540,12 @@ function ActivityMessage({ message }: { message: ChatMessage }) {
   const count = message.activityCount ?? getActivityCount(content)
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 leading-relaxed">
       <span
         aria-hidden="true"
-        className="grid size-4 shrink-0 place-items-center rounded-sm bg-muted/70 text-muted-foreground/80"
+        className="grid size-5 shrink-0 place-items-center rounded-sm bg-muted/70 text-muted-foreground/80"
       >
-        <Icon className="size-2.5" />
+        <Icon className="size-3" />
       </span>
       <span className="min-w-0 truncate text-muted-foreground/85">
         {segments.map((segment, index) =>
@@ -3003,13 +2994,13 @@ function StarterPrompts({
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-3 py-6">
       <div className="flex flex-col gap-1 text-center">
-        <div className="mx-auto grid size-8 place-items-center rounded-lg bg-muted text-foreground">
+        <div className="mx-auto grid size-9 place-items-center rounded-xl bg-muted text-foreground">
           <Sparkles aria-hidden="true" weight="duotone" />
         </div>
         <h2 className="text-sm font-semibold text-foreground">
           What do you want to build?
         </h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-balance text-xs text-muted-foreground">
           Pick a starter idea or describe your own app to get going.
         </p>
       </div>
@@ -3019,7 +3010,7 @@ function StarterPrompts({
             key={entry.title}
             type="button"
             onClick={() => onSelect(entry.prompt)}
-            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-all duration-150 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-muted hover:text-foreground hover:shadow-sm motion-reduce:transform-none motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="group flex flex-col gap-1 rounded-md border border-border bg-card p-2.5 text-left text-xs leading-5 text-muted-foreground transition-[color,background-color,border-color,box-shadow] hover:border-foreground/20 hover:bg-muted hover:text-foreground hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <span className="text-sm font-medium text-foreground">
               {entry.title}
@@ -3098,7 +3089,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6"
+      className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="shortcuts-help-title"
@@ -3108,8 +3099,8 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
         }
       }}
     >
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex max-h-[min(520px,88vh)] w-full max-w-md flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <div>
             <h2
               id="shortcuts-help-title"
@@ -3132,11 +3123,11 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
             Close
           </Button>
         </div>
-        <ul className="flex flex-col gap-1 p-2 text-sm">
+        <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-2 text-sm">
           {KEYBOARD_SHORTCUTS.map((shortcut) => (
             <li
               key={shortcut.keys.join("+")}
-              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5"
+              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/55"
             >
               <span className="text-foreground">{shortcut.description}</span>
               <span className="flex shrink-0 items-center gap-1">
@@ -3145,7 +3136,7 @@ function KeyboardShortcutsHelpDialog({ onClose }: { onClose: () => void }) {
                     {index > 0 ? (
                       <span className="text-xs text-muted-foreground">+</span>
                     ) : null}
-                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground">
+                    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border border-border/80 bg-muted px-1.5 font-mono text-[11px] font-medium text-foreground shadow-sm">
                       {renderKey(key)}
                     </kbd>
                   </span>
@@ -3173,12 +3164,12 @@ function ApiKeyOnboardingModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-6 backdrop-blur-sm">
       <form
         role="dialog"
         aria-modal="true"
         aria-labelledby="api-key-onboarding-title"
-        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-lg"
+        className="flex w-full max-w-sm flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-xl"
         onSubmit={onSubmit}
       >
         <div className="border-b px-4 py-3">
@@ -3227,10 +3218,12 @@ function ApiKeyOnboardingModal({
               {sessionError}
             </p>
           ) : null}
+        </div>
+        <div className="border-t border-border/60 bg-muted/15 px-4 py-3">
           <Button
             type="submit"
             disabled={!apiKey.trim() || isCreatingSession}
-            className="h-9 rounded-md"
+            className="h-9 w-full rounded-md"
           >
             {isCreatingSession ? (
               <Loader2 data-icon="inline-start" className="animate-spin" />
@@ -3421,7 +3414,7 @@ function ConversationSidebar({
   }
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-muted/30">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-muted/30 shadow-sm">
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-1 px-2 pt-2">
           <div className="mb-1 flex items-center gap-1">
@@ -3654,7 +3647,7 @@ function ConversationSidebar({
           ) : null}
         </div>
       </ScrollArea>
-      <div className="flex items-center justify-between gap-2 py-2 pl-4 pr-2">
+      <div className="flex items-center justify-between gap-2 border-t border-border/70 bg-muted/25 py-2 pl-4 pr-2">
         <div className="min-w-0 flex-1">
           {user ? (
             <p
@@ -3811,7 +3804,7 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="rounded-md text-muted-foreground transition-colors duration-200"
+      className="rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted"
       aria-label={`Theme: ${label}. Switch to ${getThemePresentation(next).label}.`}
       title={`Theme: ${label}`}
       onClick={() => onPreferenceChange(next)}
@@ -3885,18 +3878,20 @@ function CollapsedProjectSidebar({
   onShowSidebar: () => void
 }) {
   return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r border-border/70 bg-muted/30 py-2 shadow-inner">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="rounded-md text-muted-foreground"
-        aria-label="Show projects sidebar"
-        title="Show projects sidebar"
-        onClick={onShowSidebar}
-      >
-        <PanelLeftOpen aria-hidden="true" />
-      </Button>
+    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-3">
+      <div className="rounded-lg bg-muted/50 p-0.5 shadow-inner">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="rounded-md text-muted-foreground"
+          aria-label="Show projects sidebar"
+          title="Show projects sidebar"
+          onClick={onShowSidebar}
+        >
+          <PanelLeftOpen aria-hidden="true" />
+        </Button>
+      </div>
     </div>
   )
 }
@@ -4494,13 +4489,10 @@ function ProjectChatHeader({
   updatedAt: number
 }) {
   return (
-    <div className="flex min-h-10 items-center justify-between gap-2 border-b px-3 py-1.5">
+    <div className="flex min-h-10 items-center justify-between gap-2 border-b bg-muted/30 px-3 py-1.5">
       <div className="min-w-0">
-        <p className="flex min-w-0 items-center gap-2 truncate text-sm font-semibold text-foreground">
-          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-            <Cube aria-hidden="true" className="size-3.5" weight="duotone" />
-          </span>
-          <span className="truncate">{title}</span>
+        <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+          {title}
         </p>
         <p className="truncate text-xs text-muted-foreground">
           {formatHeaderUpdatedAt(updatedAt)}
@@ -4828,16 +4820,27 @@ function MarkdownMessage({ content }: { content: string }) {
             <ol className="ml-4 list-decimal whitespace-normal">{children}</ol>
           ),
           li: ({ children }) => <li className="pl-1">{children}</li>,
-          a: ({ children, href }) => (
-            <a
-              href={href}
-              className="font-medium text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
-              {...(href?.startsWith("http")
-                ? { target: "_blank", rel: "noreferrer noopener" }
-                : {})}
-            >
+          strong: ({ children }) => (
+            <strong className="font-semibold text-foreground">{children}</strong>
+          ),
+          a: ({ href, children }) => {
+            const isHttp =
+              typeof href === "string" &&
+              (href.startsWith("http:") || href.startsWith("https:"))
+            return (
+              <a
+                href={href}
+                className="font-medium text-primary underline decoration-primary/30 underline-offset-2 transition-colors hover:decoration-primary"
+                {...(isHttp ? { target: "_blank", rel: "noreferrer" } : {})}
+              >
+                {children}
+              </a>
+            )
+          },
+          blockquote: ({ children }) => (
+            <blockquote className="my-2 border-l-2 border-muted-foreground/30 pl-3 text-muted-foreground">
               {children}
-            </a>
+            </blockquote>
           ),
           code: ({ children }) => (
             <code className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
