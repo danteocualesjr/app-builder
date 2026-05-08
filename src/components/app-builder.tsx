@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react"
 import {
   ArrowClockwiseIcon as ArrowClockwise,
@@ -344,6 +345,11 @@ const fallbackModels: ModelCatalogItem[] = [
 const fallbackModelSelection = encodeModelSelection({ id: fallbackModels[0].id })
 
 export function AppBuilder() {
+  const hasMounted = useSyncExternalStore(
+    subscribeMountedNoop,
+    getMountedTrue,
+    getMountedFalse
+  )
   const [initialAppState] = useState(readPersistedAppState)
   const [conversations, setConversations] = useState(
     initialAppState.conversations
@@ -1636,6 +1642,32 @@ export function AppBuilder() {
       message.activityType === "tool_call" &&
       message.activityGroupKey === activity.groupKey &&
       message.activityIcon === activity.icon
+    )
+  }
+
+  if (!hasMounted) {
+    return (
+      <main
+        className="flex h-screen items-center justify-center bg-background p-6"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="rounded-2xl border border-border/80 bg-card px-8 py-6 shadow-sm">
+            <Loader2
+              aria-hidden="true"
+              className="mx-auto size-9 animate-spin text-muted-foreground"
+            />
+            <p className="mt-4 text-center text-sm font-medium text-foreground">
+              Preparing workspace
+            </p>
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              Restoring your projects and preferences
+            </p>
+          </div>
+          <span className="sr-only">Loading application</span>
+        </div>
+      </main>
     )
   }
 
@@ -5690,6 +5722,18 @@ function getProjectNameMessages(conversation: Conversation): ProjectNameMessage[
   return conversationContext.length > 12
     ? [conversationContext[0], ...conversationContext.slice(-11)]
     : conversationContext
+}
+
+function subscribeMountedNoop() {
+  return () => {}
+}
+
+function getMountedTrue() {
+  return true
+}
+
+function getMountedFalse() {
+  return false
 }
 
 function readPersistedAppState(): PersistedAppState {
