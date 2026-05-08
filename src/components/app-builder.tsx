@@ -1915,6 +1915,11 @@ export function AppBuilder() {
                         className="size-7 rounded-full bg-foreground text-background hover:bg-foreground/90 [&_svg:not([class*='size-'])]:size-4"
                         disabled={!canSubmit}
                         aria-label="Send message"
+                        title={
+                          canSubmit
+                            ? "Send message (Enter)"
+                            : "Type a message to send"
+                        }
                       >
                         <ArrowUp aria-hidden="true" className="size-5" />
                       </Button>
