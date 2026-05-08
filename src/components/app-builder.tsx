@@ -3187,6 +3187,10 @@ function ApiKeyOnboardingModal({
             Add your Cursor API key to start a local preview workspace. You can
             update or clear it later from settings.
           </p>
+          <p className="mt-2 text-[11px] leading-4 text-muted-foreground/90">
+            Your key is stored only in this browser&apos;s local storage and is
+            never sent except to connect your sessions.
+          </p>
         </div>
 
         <div className="flex flex-col gap-3 p-4">
