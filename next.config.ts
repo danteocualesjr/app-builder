@@ -4,7 +4,11 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react"],
   },
-  serverExternalPackages: ["@cursor/sdk"],
+  serverExternalPackages: [
+    "@cursor/sdk",
+    "@remotion/bundler",
+    "@remotion/renderer",
+  ],
   turbopack: {
     root: process.cwd(),
   },
