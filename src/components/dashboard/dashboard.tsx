@@ -307,33 +307,49 @@ export function Dashboard() {
       </div>
 
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ArrowLeft className="size-3.5" />
-              App builder
-            </Link>
-            <span className="hidden text-muted-foreground/60 sm:inline">/</span>
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
-                <ChartLineUp className="size-4" weight="bold" />
-              </span>
-              <div className="leading-tight">
-                <h1 className="font-heading text-sm font-semibold">
-                  Insights dashboard
-                </h1>
-                <p className="text-[11px] text-muted-foreground">
-                  Live overview of product activity
-                </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
+          <div className="flex items-center justify-between gap-3 sm:justify-start">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <ArrowLeft className="size-3.5" />
+                App builder
+              </Link>
+              <span className="hidden text-muted-foreground/60 sm:inline">/</span>
+              <div className="hidden items-center gap-2 sm:flex">
+                <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <ChartLineUp className="size-4" weight="bold" />
+                </span>
+                <div className="leading-tight">
+                  <h1 className="font-heading text-sm font-semibold">
+                    Insights dashboard
+                  </h1>
+                  <p className="text-[11px] text-muted-foreground">
+                    Live overview of product activity
+                  </p>
+                </div>
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="shrink-0 sm:hidden"
+              aria-label="Toggle theme"
+              onClick={toggleTheme}
+            >
+              <Sun className="size-4 dark:hidden" />
+              <Moon className="hidden size-4 dark:block" />
+            </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center rounded-lg border border-border bg-background p-0.5 sm:flex">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            <div
+              className="flex flex-1 justify-center rounded-lg border border-border bg-background p-0.5 sm:flex-initial sm:justify-start"
+              role="group"
+              aria-label="Report date range"
+            >
               {RANGE_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
@@ -353,6 +369,7 @@ export function Dashboard() {
             <Button
               variant="outline"
               size="icon-sm"
+              className="hidden shrink-0 sm:inline-flex"
               aria-label="Toggle theme"
               onClick={toggleTheme}
             >
