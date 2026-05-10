@@ -74,6 +74,10 @@ type AreaChartProps = {
   height?: number
   className?: string
   formatValue?: (n: number) => string
+  /** Short label for assistive technologies (embedded SVG title). */
+  accessibilityTitle?: string
+  /** Longer explanation for screen readers (embedded SVG description). */
+  accessibilityDescription?: string
 }
 
 export function AreaChart({
@@ -82,6 +86,8 @@ export function AreaChart({
   height = 220,
   className,
   formatValue = (n) => Math.round(n).toLocaleString(),
+  accessibilityTitle = "Trend chart",
+  accessibilityDescription = "Area chart of values across the horizontal axis. Hover the chart to read each point.",
 }: AreaChartProps) {
   const reduceMotion = usePrefersReducedMotion()
   const tweened = useTween(data, 700, reduceMotion)
@@ -125,7 +131,10 @@ export function AreaChart({
         className="h-full w-full overflow-visible"
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
+        role="img"
       >
+        <title>{accessibilityTitle}</title>
+        <desc>{accessibilityDescription}</desc>
         <defs>
           <linearGradient id="dashboard-area-grad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="currentColor" stopOpacity="0.35" />
@@ -205,6 +214,8 @@ type BarChartProps = {
   height?: number
   formatValue?: (n: number) => string
   className?: string
+  accessibilityTitle?: string
+  accessibilityDescription?: string
 }
 
 export function BarChart({
@@ -213,13 +224,20 @@ export function BarChart({
   height = 180,
   formatValue = (n) => Math.round(n).toLocaleString(),
   className,
+  accessibilityTitle = "Bar chart",
+  accessibilityDescription = "Vertical bars comparing one numeric value per category.",
 }: BarChartProps) {
   const reduceMotion = usePrefersReducedMotion()
   const tweened = useTween(data, 600, reduceMotion)
   const max = Math.max(...tweened, 1) * 1.1
 
   return (
-    <div className={cn("flex w-full items-end gap-1.5", className)} style={{ height }}>
+    <div
+      className={cn("flex w-full items-end gap-1.5", className)}
+      style={{ height }}
+      role="img"
+      aria-label={`${accessibilityTitle}. ${accessibilityDescription}`}
+    >
       {tweened.map((v, i) => {
         const pct = (v / max) * 100
         return (
@@ -262,6 +280,8 @@ type DonutChartProps = {
   centerLabel?: string
   centerValue?: string
   className?: string
+  accessibilityTitle?: string
+  accessibilityDescription?: string
 }
 
 export function DonutChart({
@@ -271,6 +291,8 @@ export function DonutChart({
   centerLabel = "Total",
   centerValue,
   className,
+  accessibilityTitle = "Distribution chart",
+  accessibilityDescription = "Donut chart of category shares. Hover segments to highlight a slice.",
 }: DonutChartProps) {
   const [active, setActive] = useState<number | null>(null)
   const total = useMemo(() => data.reduce((s, d) => s + d.value, 0), [data])
@@ -297,7 +319,13 @@ export function DonutChart({
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
       <div className="relative" style={{ width: size, height: size }}>
-        <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          className="h-full w-full -rotate-90"
+          role="img"
+        >
+          <title>{accessibilityTitle}</title>
+          <desc>{accessibilityDescription}</desc>
           <circle
             cx={cx}
             cy={cy}

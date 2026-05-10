@@ -480,6 +480,8 @@ export function Dashboard() {
                 labels={areaLabels}
                 height={240}
                 formatValue={(n) => `$${Math.round(n).toLocaleString()}`}
+                accessibilityTitle="Revenue trend"
+                accessibilityDescription="Daily revenue across the selected range. Hover the chart to read amount and date for each point."
               />
             </CardContent>
           </Card>
@@ -501,6 +503,8 @@ export function Dashboard() {
                 data={channels}
                 centerLabel="Sessions"
                 centerValue={sum(channels.map((c) => c.value)).toLocaleString()}
+                accessibilityTitle="Sessions by channel"
+                accessibilityDescription="Share of sessions from direct, search, social, and referral sources. Hover a colored arc to highlight one channel."
               />
             </CardContent>
           </Card>
@@ -523,7 +527,13 @@ export function Dashboard() {
               <Badge variant="secondary">Past week</Badge>
             </CardHeader>
             <CardContent>
-              <BarChart data={dailyActivity} labels={DOW} height={200} />
+              <BarChart
+                data={dailyActivity}
+                labels={DOW}
+                height={200}
+                accessibilityTitle="Sessions per weekday"
+                accessibilityDescription="Bar heights show relative session volume for each day of the past week."
+              />
             </CardContent>
           </Card>
 
