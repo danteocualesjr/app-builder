@@ -9,6 +9,9 @@ import {
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+/** Guardrail so oversized prompts cannot exhaust memory or upstream limits. */
+const MAX_MESSAGE_LENGTH = 100_000
+
 type ChatRequest = {
   sessionId?: string
   message?: string
@@ -26,6 +29,15 @@ export async function POST(request: Request) {
     return Response.json(
       { error: "sessionId and message are required." },
       { status: 400 }
+    )
+  }
+
+  if (body.message.length > MAX_MESSAGE_LENGTH) {
+    return Response.json(
+      {
+        error: `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH.toLocaleString()} characters.`,
+      },
+      { status: 413 }
     )
   }
 

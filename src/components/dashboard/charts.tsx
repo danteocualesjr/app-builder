@@ -4,18 +4,54 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react"
 
 import { cn } from "@/lib/utils"
 
-function useTween(target: number[], duration = 700) {
-  const [current, setCurrent] = useState(target)
+function subscribeReducedMotion(callback: () => void) {
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+  mq.addEventListener("change", callback)
+  return () => mq.removeEventListener("change", callback)
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
+function getReducedMotionServerSnapshot() {
+  return false
+}
+
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot
+  )
+}
+
+function useTween(target: number[], duration = 700, reduceMotion = false) {
+  const [animated, setAnimated] = useState(target)
   const fromRef = useRef(target)
+  const wasReducedMotionRef = useRef(reduceMotion)
+
+  useLayoutEffect(() => {
+    if (wasReducedMotionRef.current && !reduceMotion) {
+      setAnimated(fromRef.current)
+    }
+    wasReducedMotionRef.current = reduceMotion
+  }, [reduceMotion])
 
   useEffect(() => {
+    if (reduceMotion) {
+      fromRef.current = target
+      return
+    }
     const from = fromRef.current
     const start = performance.now()
     let raf = 0
@@ -26,7 +62,7 @@ function useTween(target: number[], duration = 700) {
         const f = from[i] ?? to
         return f + (to - f) * eased
       })
-      setCurrent(next)
+      setAnimated(next)
       if (t < 1) {
         raf = requestAnimationFrame(tick)
       } else {
@@ -35,9 +71,9 @@ function useTween(target: number[], duration = 700) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [target, duration])
+  }, [target, duration, reduceMotion])
 
-  return current
+  return reduceMotion ? target : animated
 }
 
 type AreaChartProps = {
@@ -46,6 +82,10 @@ type AreaChartProps = {
   height?: number
   className?: string
   formatValue?: (n: number) => string
+  /** Short label for assistive technologies (embedded SVG title). */
+  accessibilityTitle?: string
+  /** Longer explanation for screen readers (embedded SVG description). */
+  accessibilityDescription?: string
 }
 
 export function AreaChart({
@@ -54,8 +94,11 @@ export function AreaChart({
   height = 220,
   className,
   formatValue = (n) => Math.round(n).toLocaleString(),
+  accessibilityTitle = "Trend chart",
+  accessibilityDescription = "Area chart of values across the horizontal axis. Hover the chart to read each point.",
 }: AreaChartProps) {
-  const tweened = useTween(data)
+  const reduceMotion = usePrefersReducedMotion()
+  const tweened = useTween(data, 700, reduceMotion)
   const [hover, setHover] = useState<number | null>(null)
   const w = 800
   const h = height
@@ -96,7 +139,10 @@ export function AreaChart({
         className="h-full w-full overflow-visible"
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
+        role="img"
       >
+        <title>{accessibilityTitle}</title>
+        <desc>{accessibilityDescription}</desc>
         <defs>
           <linearGradient id="dashboard-area-grad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="currentColor" stopOpacity="0.35" />
@@ -176,6 +222,8 @@ type BarChartProps = {
   height?: number
   formatValue?: (n: number) => string
   className?: string
+  accessibilityTitle?: string
+  accessibilityDescription?: string
 }
 
 export function BarChart({
@@ -184,12 +232,20 @@ export function BarChart({
   height = 180,
   formatValue = (n) => Math.round(n).toLocaleString(),
   className,
+  accessibilityTitle = "Bar chart",
+  accessibilityDescription = "Vertical bars comparing one numeric value per category.",
 }: BarChartProps) {
-  const tweened = useTween(data, 600)
+  const reduceMotion = usePrefersReducedMotion()
+  const tweened = useTween(data, 600, reduceMotion)
   const max = Math.max(...tweened, 1) * 1.1
 
   return (
-    <div className={cn("flex w-full items-end gap-1.5", className)} style={{ height }}>
+    <div
+      className={cn("flex w-full items-end gap-1.5", className)}
+      style={{ height }}
+      role="img"
+      aria-label={`${accessibilityTitle}. ${accessibilityDescription}`}
+    >
       {tweened.map((v, i) => {
         const pct = (v / max) * 100
         return (
@@ -232,6 +288,8 @@ type DonutChartProps = {
   centerLabel?: string
   centerValue?: string
   className?: string
+  accessibilityTitle?: string
+  accessibilityDescription?: string
 }
 
 export function DonutChart({
@@ -241,6 +299,8 @@ export function DonutChart({
   centerLabel = "Total",
   centerValue,
   className,
+  accessibilityTitle = "Distribution chart",
+  accessibilityDescription = "Donut chart of category shares. Hover segments to highlight a slice.",
 }: DonutChartProps) {
   const [active, setActive] = useState<number | null>(null)
   const total = useMemo(() => data.reduce((s, d) => s + d.value, 0), [data])
@@ -267,7 +327,13 @@ export function DonutChart({
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
       <div className="relative" style={{ width: size, height: size }}>
-        <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          className="h-full w-full -rotate-90"
+          role="img"
+        >
+          <title>{accessibilityTitle}</title>
+          <desc>{accessibilityDescription}</desc>
           <circle
             cx={cx}
             cy={cy}

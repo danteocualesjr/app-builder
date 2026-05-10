@@ -124,9 +124,21 @@ export function RecapCard({ data, className }: RecapCardProps) {
             )}
           </Button>
         </div>
-        {error && (
-          <p className="text-[11px] text-destructive">{error}</p>
-        )}
+        {error ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/25 bg-destructive/5 px-2.5 py-2">
+            <p className="min-w-0 flex-1 text-[11px] text-destructive">{error}</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-destructive/40"
+              onClick={onExport}
+              disabled={exporting}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : null}
         <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <PlayCircle className="size-3" />
           First export downloads headless Chromium (~90&nbsp;MB) and may take 10–20&nbsp;s.

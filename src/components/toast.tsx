@@ -136,6 +136,8 @@ function ToastViewport({
     <div
       role="region"
       aria-label="Notifications"
+      aria-live="polite"
+      aria-relevant="additions text"
       className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2"
     >
       {toasts.map((toast) => {

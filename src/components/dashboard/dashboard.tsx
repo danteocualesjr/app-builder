@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowDownIcon as ArrowDown,
   ArrowLeftIcon as ArrowLeft,
@@ -68,6 +68,15 @@ function generateSeries(seed: number, days: number, base: number, variance: numb
 
 function sum(arr: number[]) {
   return arr.reduce((s, n) => s + n, 0)
+}
+
+function formatDashboardRefresh(seconds: number) {
+  if (seconds < 15) return "Updated just now"
+  if (seconds < 60) return `Updated ${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `Updated ${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  return `Updated ${hours}h ago`
 }
 
 type KpiDef = {
@@ -200,6 +209,33 @@ function toggleTheme() {
 
 export function Dashboard() {
   const [range, setRange] = useState<Range>("30d")
+  const [updatedLabel, setUpdatedLabel] = useState("Updated just now")
+  const dataRefreshedAtRef = useRef<number | null>(null)
+  const previousRangeRef = useRef(range)
+
+  useLayoutEffect(() => {
+    if (dataRefreshedAtRef.current === null) {
+      dataRefreshedAtRef.current = Date.now()
+      return
+    }
+    if (previousRangeRef.current !== range) {
+      dataRefreshedAtRef.current = Date.now()
+      previousRangeRef.current = range
+    }
+  }, [range])
+
+  useEffect(() => {
+    function updateLabel() {
+      const start = dataRefreshedAtRef.current
+      if (start === null) return
+      const elapsedSec = Math.floor((Date.now() - start) / 1000)
+      setUpdatedLabel(formatDashboardRefresh(elapsedSec))
+    }
+    updateLabel()
+    const id = window.setInterval(updateLabel, 10_000)
+    return () => window.clearInterval(id)
+  }, [range])
+
   const days = RANGE_OPTIONS.find((r) => r.id === range)?.days ?? 30
 
   const revenueSeries = useMemo(() => generateSeries(11, days, 4_300, 800), [days])
@@ -307,33 +343,49 @@ export function Dashboard() {
       </div>
 
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ArrowLeft className="size-3.5" />
-              App builder
-            </Link>
-            <span className="hidden text-muted-foreground/60 sm:inline">/</span>
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
-                <ChartLineUp className="size-4" weight="bold" />
-              </span>
-              <div className="leading-tight">
-                <h1 className="font-heading text-sm font-semibold">
-                  Insights dashboard
-                </h1>
-                <p className="text-[11px] text-muted-foreground">
-                  Live overview of product activity
-                </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
+          <div className="flex items-center justify-between gap-3 sm:justify-start">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <ArrowLeft className="size-3.5" />
+                App builder
+              </Link>
+              <span className="hidden text-muted-foreground/60 sm:inline">/</span>
+              <div className="hidden items-center gap-2 sm:flex">
+                <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <ChartLineUp className="size-4" weight="bold" />
+                </span>
+                <div className="leading-tight">
+                  <h1 className="font-heading text-sm font-semibold">
+                    Insights dashboard
+                  </h1>
+                  <p className="text-[11px] text-muted-foreground">
+                    Live overview of product activity
+                  </p>
+                </div>
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="shrink-0 sm:hidden"
+              aria-label="Toggle theme"
+              onClick={toggleTheme}
+            >
+              <Sun className="size-4 dark:hidden" />
+              <Moon className="hidden size-4 dark:block" />
+            </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center rounded-lg border border-border bg-background p-0.5 sm:flex">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            <div
+              className="flex flex-1 justify-center rounded-lg border border-border bg-background p-0.5 sm:flex-initial sm:justify-start"
+              role="group"
+              aria-label="Report date range"
+            >
               {RANGE_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
@@ -353,6 +405,7 @@ export function Dashboard() {
             <Button
               variant="outline"
               size="icon-sm"
+              className="hidden shrink-0 sm:inline-flex"
               aria-label="Toggle theme"
               onClick={toggleTheme}
             >
@@ -373,9 +426,7 @@ export function Dashboard() {
               </span>
               Live
             </Badge>
-            <span className="text-xs text-muted-foreground">
-              Updated just now
-            </span>
+            <span className="text-xs text-muted-foreground">{updatedLabel}</span>
           </div>
           <h2 className="font-heading text-xl font-semibold sm:text-2xl">
             Welcome back. Here&apos;s how things are trending.
@@ -463,6 +514,8 @@ export function Dashboard() {
                 labels={areaLabels}
                 height={240}
                 formatValue={(n) => `$${Math.round(n).toLocaleString()}`}
+                accessibilityTitle="Revenue trend"
+                accessibilityDescription="Daily revenue across the selected range. Hover the chart to read amount and date for each point."
               />
             </CardContent>
           </Card>
@@ -484,6 +537,8 @@ export function Dashboard() {
                 data={channels}
                 centerLabel="Sessions"
                 centerValue={sum(channels.map((c) => c.value)).toLocaleString()}
+                accessibilityTitle="Sessions by channel"
+                accessibilityDescription="Share of sessions from direct, search, social, and referral sources. Hover a colored arc to highlight one channel."
               />
             </CardContent>
           </Card>
@@ -506,7 +561,13 @@ export function Dashboard() {
               <Badge variant="secondary">Past week</Badge>
             </CardHeader>
             <CardContent>
-              <BarChart data={dailyActivity} labels={DOW} height={200} />
+              <BarChart
+                data={dailyActivity}
+                labels={DOW}
+                height={200}
+                accessibilityTitle="Sessions per weekday"
+                accessibilityDescription="Bar heights show relative session volume for each day of the past week."
+              />
             </CardContent>
           </Card>
 
