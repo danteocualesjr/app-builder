@@ -3208,6 +3208,11 @@ type KeyboardShortcut = {
 
 const KEYBOARD_SHORTCUTS: ReadonlyArray<KeyboardShortcut> = [
   { keys: ["mod", "k"], description: "Focus the chat input" },
+  { keys: ["Enter"], description: "Send message (when the chat field is focused)" },
+  {
+    keys: ["shift", "Enter"],
+    description: "New line in the chat field without sending",
+  },
   { keys: ["mod", "/"], description: "Show keyboard shortcuts" },
   { keys: ["mod", "b"], description: "Toggle the projects sidebar" },
   { keys: ["mod", "shift", "o"], description: "Start a new project" },
