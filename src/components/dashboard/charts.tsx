@@ -7,15 +7,43 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react"
 
 import { cn } from "@/lib/utils"
 
-function useTween(target: number[], duration = 700) {
+function subscribeReducedMotion(callback: () => void) {
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+  mq.addEventListener("change", callback)
+  return () => mq.removeEventListener("change", callback)
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
+function getReducedMotionServerSnapshot() {
+  return false
+}
+
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot
+  )
+}
+
+function useTween(target: number[], duration = 700, reduceMotion = false) {
   const [current, setCurrent] = useState(target)
   const fromRef = useRef(target)
 
   useEffect(() => {
+    if (reduceMotion) {
+      setCurrent(target)
+      fromRef.current = target
+      return
+    }
     const from = fromRef.current
     const start = performance.now()
     let raf = 0
@@ -35,7 +63,7 @@ function useTween(target: number[], duration = 700) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [target, duration])
+  }, [target, duration, reduceMotion])
 
   return current
 }
@@ -55,7 +83,8 @@ export function AreaChart({
   className,
   formatValue = (n) => Math.round(n).toLocaleString(),
 }: AreaChartProps) {
-  const tweened = useTween(data)
+  const reduceMotion = usePrefersReducedMotion()
+  const tweened = useTween(data, 700, reduceMotion)
   const [hover, setHover] = useState<number | null>(null)
   const w = 800
   const h = height
@@ -185,7 +214,8 @@ export function BarChart({
   formatValue = (n) => Math.round(n).toLocaleString(),
   className,
 }: BarChartProps) {
-  const tweened = useTween(data, 600)
+  const reduceMotion = usePrefersReducedMotion()
+  const tweened = useTween(data, 600, reduceMotion)
   const max = Math.max(...tweened, 1) * 1.1
 
   return (
