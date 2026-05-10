@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowDownIcon as ArrowDown,
   ArrowLeftIcon as ArrowLeft,
@@ -68,6 +68,15 @@ function generateSeries(seed: number, days: number, base: number, variance: numb
 
 function sum(arr: number[]) {
   return arr.reduce((s, n) => s + n, 0)
+}
+
+function formatDashboardRefresh(seconds: number) {
+  if (seconds < 15) return "Updated just now"
+  if (seconds < 60) return `Updated ${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `Updated ${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  return `Updated ${hours}h ago`
 }
 
 type KpiDef = {
@@ -200,6 +209,33 @@ function toggleTheme() {
 
 export function Dashboard() {
   const [range, setRange] = useState<Range>("30d")
+  const [updatedLabel, setUpdatedLabel] = useState("Updated just now")
+  const dataRefreshedAtRef = useRef<number | null>(null)
+  const previousRangeRef = useRef(range)
+
+  useLayoutEffect(() => {
+    if (dataRefreshedAtRef.current === null) {
+      dataRefreshedAtRef.current = Date.now()
+      return
+    }
+    if (previousRangeRef.current !== range) {
+      dataRefreshedAtRef.current = Date.now()
+      previousRangeRef.current = range
+    }
+  }, [range])
+
+  useEffect(() => {
+    function updateLabel() {
+      const start = dataRefreshedAtRef.current
+      if (start === null) return
+      const elapsedSec = Math.floor((Date.now() - start) / 1000)
+      setUpdatedLabel(formatDashboardRefresh(elapsedSec))
+    }
+    updateLabel()
+    const id = window.setInterval(updateLabel, 10_000)
+    return () => window.clearInterval(id)
+  }, [range])
+
   const days = RANGE_OPTIONS.find((r) => r.id === range)?.days ?? 30
 
   const revenueSeries = useMemo(() => generateSeries(11, days, 4_300, 800), [days])
@@ -390,9 +426,7 @@ export function Dashboard() {
               </span>
               Live
             </Badge>
-            <span className="text-xs text-muted-foreground">
-              Updated just now
-            </span>
+            <span className="text-xs text-muted-foreground">{updatedLabel}</span>
           </div>
           <h2 className="font-heading text-xl font-semibold sm:text-2xl">
             Welcome back. Here&apos;s how things are trending.

@@ -4,6 +4,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -35,12 +36,19 @@ function usePrefersReducedMotion() {
 }
 
 function useTween(target: number[], duration = 700, reduceMotion = false) {
-  const [current, setCurrent] = useState(target)
+  const [animated, setAnimated] = useState(target)
   const fromRef = useRef(target)
+  const wasReducedMotionRef = useRef(reduceMotion)
+
+  useLayoutEffect(() => {
+    if (wasReducedMotionRef.current && !reduceMotion) {
+      setAnimated(fromRef.current)
+    }
+    wasReducedMotionRef.current = reduceMotion
+  }, [reduceMotion])
 
   useEffect(() => {
     if (reduceMotion) {
-      setCurrent(target)
       fromRef.current = target
       return
     }
@@ -54,7 +62,7 @@ function useTween(target: number[], duration = 700, reduceMotion = false) {
         const f = from[i] ?? to
         return f + (to - f) * eased
       })
-      setCurrent(next)
+      setAnimated(next)
       if (t < 1) {
         raf = requestAnimationFrame(tick)
       } else {
@@ -65,7 +73,7 @@ function useTween(target: number[], duration = 700, reduceMotion = false) {
     return () => cancelAnimationFrame(raf)
   }, [target, duration, reduceMotion])
 
-  return current
+  return reduceMotion ? target : animated
 }
 
 type AreaChartProps = {

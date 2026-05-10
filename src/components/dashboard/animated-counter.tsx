@@ -1,6 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 type AnimatedCounterProps = {
   value: number
@@ -32,24 +38,32 @@ export function AnimatedCounter({
     getReducedMotionSnapshot,
     getReducedMotionServerSnapshot
   )
-  const [display, setDisplay] = useState(value)
+  const [animated, setAnimated] = useState(value)
   const fromRef = useRef(value)
+  const wasReducedMotionRef = useRef(prefersReducedMotion)
+  const shown = prefersReducedMotion ? value : animated
+
+  useLayoutEffect(() => {
+    if (wasReducedMotionRef.current && !prefersReducedMotion) {
+      setAnimated(fromRef.current)
+    }
+    wasReducedMotionRef.current = prefersReducedMotion
+  }, [prefersReducedMotion])
 
   useEffect(() => {
-    const from = fromRef.current
-    if (from === value) return
     if (prefersReducedMotion) {
-      setDisplay(value)
       fromRef.current = value
       return
     }
+    const from = fromRef.current
+    if (from === value) return
     const start = performance.now()
     let raf = 0
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration)
       const eased = 1 - Math.pow(1 - t, 3)
       const next = from + (value - from) * eased
-      setDisplay(next)
+      setAnimated(next)
       if (t < 1) {
         raf = requestAnimationFrame(tick)
       } else {
@@ -60,5 +74,5 @@ export function AnimatedCounter({
     return () => cancelAnimationFrame(raf)
   }, [value, duration, prefersReducedMotion])
 
-  return <>{format ? format(display) : Math.round(display).toLocaleString()}</>
+  return <>{format ? format(shown) : Math.round(shown).toLocaleString()}</>
 }
